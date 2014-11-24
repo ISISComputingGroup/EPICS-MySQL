@@ -18,7 +18,7 @@ ifneq ($(findstring debug,$(EPICS_HOST_ARCH)),)
 CMAKE_CONFIG_FLAGS += -DCMAKE_BUILD_TYPE:STRING=Debug
 CMAKE_CONFIG = Debug
 else
-CMAKE_CONFIG = RelWithDebInfo
+CMAKE_CONFIG = Release # RelWithDebInfo
 endif
 
 include $(TOP)/configure/RULES
