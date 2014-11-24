@@ -14,7 +14,9 @@ ifdef T_A
 install:
 	cmake .. -G "Visual Studio 10 Win64" -DCMAKE_INSTALL_PREFIX:PATH=$(MYSQL_DIR) $(CMAKE_CONFIG_FLAGS)
 	cmake --build . --target INSTALL --config RelWithDebInfo $(CMAKE_BUILD_FLAGS)
+	-$(MKDIR) $(TOP)/bin
 	-$(MKDIR) $(TOP)/bin/$(EPICS_HOST_ARCH)
+	-$(MKDIR) $(TOP)/lib
 	-$(MKDIR) $(TOP)/lib/$(EPICS_HOST_ARCH)
 	-$(MKDIR) $(TOP)/include
 	-$(MKDIR) $(TOP)/include/mysql
