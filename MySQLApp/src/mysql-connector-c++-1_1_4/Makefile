@@ -3,7 +3,7 @@ TOP=../../..
 include $(TOP)/configure/CONFIG
 
 MYSQL_DIR=$(MYSQL)/install
-CMAKE_CONFIG_FLAGS=-DCMAKE_BUILD_TYPE:STRING=Debug -DBOOST_ROOT:STRING=C:/Instrument/Apps/EPICS/libraries/boost
+CMAKE_CONFIG_FLAGS=-DCMAKE_BUILD_TYPE:STRING=Debug -DBOOST_ROOT:STRING=$(EPICS_ROOT)/libraries/boost
 CMAKE_BUILD_FLAGS=
 
 include $(TOP)/configure/RULES
