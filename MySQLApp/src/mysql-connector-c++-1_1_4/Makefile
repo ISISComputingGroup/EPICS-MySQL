@@ -27,8 +27,8 @@ include $(TOP)/configure/RULES
 
 ifdef T_A
 install:
-	cmake .. -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX:PATH=$(MYSQL_DIR) $(CMAKE_CONFIG_FLAGS)
-	cmake --build . --target install --config RelWithDebInfo $(CMAKE_BUILD_FLAGS)
+	cmake .. -G "$(CMAKE_GENERATOR)" -DCMAKE_INSTALL_PREFIX:PATH=$(MYSQL_DIR) $(CMAKE_CONFIG_FLAGS)
+	cmake --build . --target install --config $(CMAKE_CONFIG) $(CMAKE_BUILD_FLAGS)
 	-$(MKDIR) $(TOP)/bin
 	-$(MKDIR) $(TOP)/bin/$(EPICS_HOST_ARCH)
 	-$(MKDIR) $(TOP)/lib
