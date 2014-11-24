@@ -45,6 +45,8 @@ UTILITIES=$(SUPPORT)/utilities
 PCRE=$(SUPPORT)/pcre
 ZLIB=$(SUPPORT)/zlib/1-2-8
 
+MYSQL=$(SUPPORT)/MySQL
+
 ## add other modules here ##
 
 include $(TOP)/../../ISIS_CONFIG.$(EPICS_HOST_ARCH)
