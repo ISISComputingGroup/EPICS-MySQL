@@ -3,15 +3,18 @@ TOP=../../..
 include $(TOP)/configure/CONFIG
 
 include $(TOP)/configure/RULES
-#----------------------------------------
-#  ADD RULES AFTER THIS LINE
 
-ifdef T_A
 install:
+ifdef T_A
 	cmake . -G "$(CMAKE_GENERATOR)" -DCMAKE_INSTALL_PREFIX:PATH="$(MYSQL_DIR)" $(CMAKE_CONFIG_FLAGS)
 	cmake --build . --target install --config $(CMAKE_CONFIG) $(CMAKE_BUILD_FLAGS)
 endif
 
-#clean::
+clean::
+ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
+	$(MAKE) -f Makefile clean
+else
+	msbuild MYSQLCPPCONN.sln /t:clean /nologo /verbosity:quiet
+endif
 
 uninstall:

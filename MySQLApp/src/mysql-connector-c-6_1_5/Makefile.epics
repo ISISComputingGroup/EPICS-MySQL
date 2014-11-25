@@ -10,7 +10,12 @@ ifdef T_A
 	cmake --build . --target install --config $(CMAKE_CONFIG) $(CMAKE_BUILD_FLAGS)
 endif
 
-#clean::
-
+clean::
+ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
+	$(MAKE) -f Makefile clean
+else
+	msbuild LibMySQL.sln /t:clean /nologo /verbosity:quiet
+endif
+	
 uninstall:
 

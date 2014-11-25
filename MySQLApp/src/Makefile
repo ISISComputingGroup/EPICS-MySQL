@@ -1,6 +1,11 @@
 TOP = ../..
 include $(TOP)/configure/CONFIG
 
+# extract visual studio major version number from path
+# unfortunately cannot use %.% so using %.0 but may not match minor version number changes e.g. 10.1
+VS_VERS=$(filter %.0,$(subst \, ,$(VSINSTALLDIR)))
+VS_MAJOR=$(word 1,$(subst ., ,$(VS_VERS)))
+
 MYSQL_DIR=$(MYSQL)/install
 CMAKE_CONFIG_FLAGS=-DBOOST_ROOT:STRING=$(EPICS_ROOT)/libraries/boost
 CMAKE_BUILD_FLAGS=
@@ -8,10 +13,11 @@ ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 CMAKE_GENERATOR=Unix Makefiles
 else
 ifneq ($(findstring windows,$(EPICS_HOST_ARCH)),)
-CMAKE_GENERATOR=Visual Studio 10 Win64
+VS_ARCH=Win64
 else
-CMAKE_GENERATOR=Visual Studio 10
+VS_ARCH=
 endif
+CMAKE_GENERATOR=Visual Studio $(VS_MAJOR) $(VS_ARCH)
 endif
 ifneq ($(findstring debug,$(EPICS_HOST_ARCH)),)
 CMAKE_CONFIG_FLAGS += -DCMAKE_BUILD_TYPE:STRING=Debug
@@ -50,8 +56,8 @@ install:
 endif
 
 clean::
-	$(MAKE) -C mysql-connector-c-6_1_5 -f Makefile.epics clean
-	$(MAKE) -C mysql-connector-c++-1_1_4 -f Makefile.epics clean
+	$(MAKE) -C mysql-connector-c-6_1_5 -f Makefile.epics clean CMAKE_CONFIG=$(CMAKE_CONFIG)
+	$(MAKE) -C mysql-connector-c++-1_1_4 -f Makefile.epics clean CMAKE_CONFIG=$(CMAKE_CONFIG)
 
 uninstall:
 
