@@ -16,6 +16,6 @@ ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 else
 	-msbuild MYSQLCPPCONN.sln /t:clean /nologo /verbosity:quiet /p:Configuration=$(CMAKE_CONFIG)
 endif
+	-$(RM) CMakeCache.txt
 
 uninstall:
-	-$(RM) CMakeCache.txt
