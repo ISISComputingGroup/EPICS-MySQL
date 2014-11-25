@@ -33,6 +33,7 @@ include $(TOP)/configure/RULES
 ifdef T_A
 install:
 	$(MAKE) -C ../mysql-connector-c-6_1_5 -f Makefile.epics install T_A=$(T_A) CMAKE_CONFIG=$(CMAKE_CONFIG) CMAKE_CONFIG_FLAGS="$(CMAKE_CONFIG_FLAGS)" CMAKE_GENERATOR="$(CMAKE_GENERATOR)" CMAKE_BUILD_FLAGS="$(CMAKE_BUILD_FLAGS)" MYSQL_DIR="$(MYSQL_DIR)"
+	$(MAKE) -C ../mysql-connector-c++-1_1_4 -f Makefile.epics install T_A=$(T_A) CMAKE_CONFIG=$(CMAKE_CONFIG) CMAKE_CONFIG_FLAGS="$(CMAKE_CONFIG_FLAGS)" CMAKE_GENERATOR="$(CMAKE_GENERATOR)" CMAKE_BUILD_FLAGS="$(CMAKE_BUILD_FLAGS)" MYSQL_DIR="$(MYSQL_DIR)"
 	-$(MKDIR) $(TOP)/bin
 	-$(MKDIR) $(TOP)/bin/$(EPICS_HOST_ARCH)
 	-$(MKDIR) $(TOP)/lib
@@ -46,13 +47,11 @@ install:
 	$(CP) -f $(MYSQL_DIR)/include/*.h* $(TOP)/include/
 	$(CP) -f $(MYSQL_DIR)/include/mysql/*.h* $(TOP)/include/mysql/
 	$(CP) -f $(MYSQL_DIR)/include/mysql/psi/*.h* $(TOP)/include/mysql/psi/
-	$(MAKE) -C ../mysql-connector-c++-1_1_4 -f Makefile.epics install T_A=$(T_A) CMAKE_CONFIG=$(CMAKE_CONFIG) CMAKE_CONFIG_FLAGS="$(CMAKE_CONFIG_FLAGS)" CMAKE_GENERATOR="$(CMAKE_GENERATOR)" CMAKE_BUILD_FLAGS="$(CMAKE_BUILD_FLAGS)" MYSQL_DIR="$(MYSQL_DIR)"
-	$(CP) -f $(MYSQL_DIR)/bin/* $(TOP)/bin/$(EPICS_HOST_ARCH)/
-	$(CP) -f $(MYSQL_DIR)/lib/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
-	$(CP) -f $(MYSQL_DIR)/include/*.h* $(TOP)/include/
-	$(CP) -f $(MYSQL_DIR)/include/mysql/*.h* $(TOP)/include/mysql/
-	$(CP) -f $(MYSQL_DIR)/include/mysql/psi/*.h* $(TOP)/include/mysql/psi/
 	$(CP) -f $(MYSQL_DIR)/include/cppconn/*.h* $(TOP)/include/cppconn/
+ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
+	$(CP) -f $(MYSQL_DIR)/lib/*.dll $(TOP)/bin/$(EPICS_HOST_ARCH)/
+	$(CP) -f $(MYSQL_DIR)/lib/*.pdb $(TOP)/bin/$(EPICS_HOST_ARCH)/
+endif
 endif
 
 clean::
