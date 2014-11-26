@@ -51,6 +51,9 @@ install:
 ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 	$(CP) -f $(MYSQL_DIR)/lib/*.dll $(TOP)/bin/$(EPICS_HOST_ARCH)/
 	$(CP) -f $(MYSQL_DIR)/lib/*.pdb $(TOP)/bin/$(EPICS_HOST_ARCH)/
+# leaving dll and pdb in EPICS "lib" causes link errors
+	$(RM) -f $(TOP)/lib/$(EPICS_HOST_ARCH)/*.dll
+	$(RM) -f $(TOP)/lib/$(EPICS_HOST_ARCH)/*.pdb
 endif
 endif
 

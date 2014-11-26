@@ -319,6 +319,7 @@ ENDIF(WIN32)
 SET(MYSQLCPPCONN_SPECIFIC_INSTALL_HEADERS
 		mysql_connection.h
 		mysql_driver.h
+		mysql_public_iface.h
 		mysql_error.h)
 
 INSTALL(FILES ${MYSQLCPPCONN_SPECIFIC_INSTALL_HEADERS} DESTINATION include)

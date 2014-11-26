@@ -46,6 +46,7 @@ PCRE=$(SUPPORT)/pcre
 ZLIB=$(SUPPORT)/zlib/1-2-8
 
 MYSQL=$(SUPPORT)/MySQL
+BOOST=$(EPICS_ROOT)/libraries/boost
 
 ## add other modules here ##
 
