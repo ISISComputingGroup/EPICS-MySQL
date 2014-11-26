@@ -54,6 +54,8 @@ ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 # leaving dll and pdb in EPICS "lib" causes link errors
 	$(RM) -f $(TOP)/lib/$(EPICS_HOST_ARCH)/*.dll
 	$(RM) -f $(TOP)/lib/$(EPICS_HOST_ARCH)/*.pdb
+else
+	$(CP) -f $(MYSQL_DIR)/lib64/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
 endif
 endif
 

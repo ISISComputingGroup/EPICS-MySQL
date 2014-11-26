@@ -36,9 +36,13 @@ $(APPNAME)_LIBS += pvdump easySQLite sqlite
 $(APPNAME)_LIBS += caPutLog
 $(APPNAME)_LIBS += icpconfig pugixml
 $(APPNAME)_LIBS += autosave
-$(APPNAME)_LIBS += utilities libjson zlib
+$(APPNAME)_LIBS += utilities libjson zlib pcre
 ## Add other libraries here ##
+ifeq ($(STATIC_BUILD),YES)
+$(APPNAME)_LIBS += mysqlcppconn-static
+else
 $(APPNAME)_LIBS += mysqlcppconn
+endif
 
 # MySQLTest_registerRecordDeviceDriver.cpp derives from MySQLTest.dbd
 $(APPNAME)_SRCS += $(APPNAME)_registerRecordDeviceDriver.cpp
