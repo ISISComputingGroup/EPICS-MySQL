@@ -42,16 +42,18 @@ install:
 	-$(MKDIR) $(TOP)/include/mysql
 	-$(MKDIR) $(TOP)/include/mysql/psi
 	-$(MKDIR) $(TOP)/include/cppconn
-	$(CP) -f $(MYSQL_DIR)/bin/* $(TOP)/bin/$(EPICS_HOST_ARCH)/
-	$(CP) -f $(MYSQL_DIR)/lib/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
 	$(CP) -f $(MYSQL_DIR)/include/*.h* $(TOP)/include/
 	$(CP) -f $(MYSQL_DIR)/include/mysql/*.h* $(TOP)/include/mysql/
 	$(CP) -f $(MYSQL_DIR)/include/mysql/psi/*.h* $(TOP)/include/mysql/psi/
 	$(CP) -f $(MYSQL_DIR)/include/cppconn/*.h* $(TOP)/include/cppconn/
+	$(CP) -f $(MYSQL_DIR)/bin/* $(TOP)/bin/$(EPICS_HOST_ARCH)/
+# this directory (on windows) causes cp from lib to fail
+	-$(RMDIR) $(MYSQL_DIR)/lib/debug
+	$(CP) -f $(MYSQL_DIR)/lib/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
 ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
+# dlls and pdbs need to be in bin not lib (and leaving copy in lib causes link errors)
 	$(CP) -f $(MYSQL_DIR)/lib/*.dll $(TOP)/bin/$(EPICS_HOST_ARCH)/
 	$(CP) -f $(MYSQL_DIR)/lib/*.pdb $(TOP)/bin/$(EPICS_HOST_ARCH)/
-# leaving dll and pdb in EPICS "lib" causes link errors
 	$(RM) -f $(TOP)/lib/$(EPICS_HOST_ARCH)/*.dll
 	$(RM) -f $(TOP)/lib/$(EPICS_HOST_ARCH)/*.pdb
 else
@@ -64,5 +66,3 @@ clean::
 	$(MAKE) -C mysql-connector-c++-1_1_4 -f Makefile.epics clean CMAKE_CONFIG=$(CMAKE_CONFIG)
 
 uninstall:
-
-
