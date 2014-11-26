@@ -13,17 +13,17 @@ ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 CMAKE_GENERATOR=Unix Makefiles
 else
 ifneq ($(findstring windows,$(EPICS_HOST_ARCH)),)
-VS_ARCH=" Win64"
+VS_ARCH=$(VS_MAJOR) Win64
 else
-VS_ARCH=
+VS_ARCH=$(VS_MAJOR)
 endif
-CMAKE_GENERATOR=Visual Studio $(VS_MAJOR)$(VS_ARCH)
+CMAKE_GENERATOR=Visual Studio $(VS_ARCH)
 endif
 ifneq ($(findstring debug,$(EPICS_HOST_ARCH)),)
 CMAKE_CONFIG_FLAGS += -DCMAKE_BUILD_TYPE:STRING=Debug
-CMAKE_CONFIG = Debug
+CMAKE_CONFIG=Debug
 else
-CMAKE_CONFIG = RelWithDebInfo
+CMAKE_CONFIG=RelWithDebInfo
 endif
 
 include $(TOP)/configure/RULES
