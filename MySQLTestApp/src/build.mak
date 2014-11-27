@@ -23,17 +23,10 @@ $(APPNAME)_DBD += base.dbd
 # Add all the support libraries needed by this IOC
 ## ISIS standard libraries ##
 ## Add other libraries here ##
+$(APPNAME)_LIBS += $(MYSQLLIB)
+
 ifeq ($(STATIC_BUILD),YES)
-ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
-#static build not working right on windows at moment
-#$(APPNAME)_LIBS += mysqlcppconn-static
 #USR_CXXFLAGS += -DCPPCONN_LIB_BUILD
-$(APPNAME)_LIBS += mysqlcppconn
-else
-$(APPNAME)_LIBS += mysqlcppconn-static
-endif
-else
-$(APPNAME)_LIBS += mysqlcppconn
 endif
 
 # MySQLTest_registerRecordDeviceDriver.cpp derives from MySQLTest.dbd
