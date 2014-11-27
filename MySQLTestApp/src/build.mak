@@ -24,7 +24,8 @@ $(APPNAME)_DBD += base.dbd
 ## ISIS standard libraries ##
 ## Add other libraries here ##
 ifeq ($(STATIC_BUILD),YES)
-ifneq ($(findstring windows,$(EPICS_HOST_ARCH)),)
+ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
+#static build not working right on windows at moment
 #$(APPNAME)_LIBS += mysqlcppconn-static
 #USR_CXXFLAGS += -DCPPCONN_LIB_BUILD
 $(APPNAME)_LIBS += mysqlcppconn
