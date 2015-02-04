@@ -14,8 +14,10 @@ CMAKE_GENERATOR=Unix Makefiles
 else
 ifneq ($(findstring windows,$(EPICS_HOST_ARCH)),)
 VS_ARCH=$(VS_MAJOR) Win64
+PLATFORM=x64
 else
 VS_ARCH=$(VS_MAJOR)
+PLATFORM=Win32
 endif
 CMAKE_GENERATOR=Visual Studio $(VS_ARCH)
 endif
@@ -62,7 +64,7 @@ endif
 endif
 
 clean::
-	$(MAKE) -C mysql-connector-c-6_1_5 -f Makefile.epics clean CMAKE_CONFIG=$(CMAKE_CONFIG)
-	$(MAKE) -C mysql-connector-c++-1_1_4 -f Makefile.epics clean CMAKE_CONFIG=$(CMAKE_CONFIG)
+	$(MAKE) -C mysql-connector-c-6_1_5 -f Makefile.epics clean CMAKE_CONFIG=$(CMAKE_CONFIG) PLATFORM=$(PLATFORM)
+	$(MAKE) -C mysql-connector-c++-1_1_4 -f Makefile.epics clean CMAKE_CONFIG=$(CMAKE_CONFIG) PLATFORM=$(PLATFORM)
 
 uninstall:

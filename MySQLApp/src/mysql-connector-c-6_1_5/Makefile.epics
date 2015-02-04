@@ -14,8 +14,9 @@ clean::
 ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 	$(MAKE) -f Makefile clean
 else
-	-msbuild LibMySQL.sln /t:clean /nologo /verbosity:quiet /p:Configuration=$(CMAKE_CONFIG)
+	-msbuild LibMySQL.sln /t:clean /nologo /verbosity:quiet /p:Configuration=$(CMAKE_CONFIG) /p:Platform=$(PLATFORM)
 endif
+	-$(RM) CMakeCache.txt cmake_install.cmake
 	-$(RM) CMakeCache.txt
 
 uninstall:
