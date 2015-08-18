@@ -7,7 +7,7 @@ VS_VERS=$(filter %.0,$(subst \, ,$(VSINSTALLDIR)))
 VS_MAJOR=$(word 1,$(subst ., ,$(VS_VERS)))
 
 MYSQL_DIR=$(MYSQL)/install
-CMAKE_CONFIG_FLAGS=-DBOOST_ROOT:STRING=$(EPICS_ROOT)/libraries/boost
+CMAKE_CONFIG_FLAGS=-DBOOST_ROOT:STRING=$(EPICS_ROOT)/libraries/master/boost
 CMAKE_BUILD_FLAGS=
 ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 CMAKE_GENERATOR=Unix Makefiles
