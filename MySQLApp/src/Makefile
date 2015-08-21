@@ -51,15 +51,16 @@ install:
 	$(CP) -f $(MYSQL_DIR)/bin/* $(TOP)/bin/$(EPICS_HOST_ARCH)/
 # this directory (on windows) causes cp from lib to fail
 	-$(RMDIR) $(MYSQL_DIR)/lib/debug
-	$(CP) -f $(MYSQL_DIR)/lib/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
 ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 # dlls and pdbs need to be in bin not lib (and leaving copy in lib causes link errors)
+	$(CP) -f $(MYSQL_DIR)/lib/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
 	$(CP) -f $(MYSQL_DIR)/lib/*.dll $(TOP)/bin/$(EPICS_HOST_ARCH)/
 	$(CP) -f $(MYSQL_DIR)/lib/*.pdb $(TOP)/bin/$(EPICS_HOST_ARCH)/
 	$(RM) -f $(TOP)/lib/$(EPICS_HOST_ARCH)/*.dll
 	$(RM) -f $(TOP)/lib/$(EPICS_HOST_ARCH)/*.pdb
 else
-	$(CP) -f $(MYSQL_DIR)/lib64/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
+	find $(MYSQL_DIR)/lib -type f -exec $(CP) {} $(TOP)/lib/$(EPICS_HOST_ARCH)/ \;
+	find $(MYSQL_DIR)/lib64 -type f -exec $(CP) {} $(TOP)/lib/$(EPICS_HOST_ARCH)/ \;
 endif
 endif
 
