@@ -59,8 +59,8 @@ ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 	$(RM) -f $(TOP)/lib/$(EPICS_HOST_ARCH)/*.dll
 	$(RM) -f $(TOP)/lib/$(EPICS_HOST_ARCH)/*.pdb
 else
-	find $(MYSQL_DIR)/lib -type f -exec $(CP) {} $(TOP)/lib/$(EPICS_HOST_ARCH)/ \;
-	find $(MYSQL_DIR)/lib64 -type f -exec $(CP) {} $(TOP)/lib/$(EPICS_HOST_ARCH)/ \;
+	if test -d $(MYSQL_DIR)/lib; then find $(MYSQL_DIR)/lib \( -type f -o -type l \) -exec $(CP) {} $(TOP)/lib/$(EPICS_HOST_ARCH)/ \; ; fi
+	if test -d $(MYSQL_DIR)/lib64; then find $(MYSQL_DIR)/lib64 \( -type f -o -type l \) -exec $(CP) {} $(TOP)/lib/$(EPICS_HOST_ARCH)/ \; ; fi
 endif
 endif
 
