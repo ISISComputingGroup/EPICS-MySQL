@@ -87,7 +87,6 @@ MySQLApp/src/mysql-connector-c-6_1_5/extra/perror
 MySQLApp/src/mysql-connector-c-6_1_5/extra/resolveip
 MySQLApp/src/mysql-connector-c-6_1_5/include/mysqld_error.h
 MySQLApp/src/mysql-connector-c-6_1_5/include/probes_mysql_dtrace.h
-MySQLApp/src/mysql-connector-c-6_1_5/include/probes_mysql_nodtrace.h
 MySQLApp/src/mysql-connector-c-6_1_5/libmysql/libmysql_api_test
 MySQLApp/src/mysql-connector-c-6_1_5/libmysql/mysqlclient_depends.c
 MySQLApp/src/mysql-connector-c-6_1_5/sql/share/english/
