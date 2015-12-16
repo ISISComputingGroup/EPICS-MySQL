@@ -35,9 +35,9 @@ INCLUDE(${CMAKE_BINARY_DIR}/win/configure.data OPTIONAL)
 GET_FILENAME_COMPONENT(_SCRIPT_DIR ${CMAKE_CURRENT_LIST_FILE} PATH)
 INCLUDE(${_SCRIPT_DIR}/WindowsCache.cmake)
 
-# We require at least Visual Studio 2010 (aka 10.0) which has version nr 1600.
-IF(MSVC_VERSION LESS 1600)
-  MESSAGE(FATAL_ERROR "Visual Studio 2010 or newer is required!")
+# We require at least Visual Studio 2013 (aka 12.0) which has version nr 1800.
+IF(NOT FORCE_UNSUPPORTED_COMPILER AND MSVC_VERSION LESS 1800)
+  MESSAGE(FATAL_ERROR "Visual Studio 2013 or newer is required!")
 ENDIF()
 
 # OS display name (version_compile_os etc).
@@ -49,50 +49,53 @@ ELSE()
   SET(SYSTEM_TYPE "Win32")
 ENDIF()
 
-# Target Windows Vista or later, i.e _WIN32_WINNT_VISTA
-ADD_DEFINITIONS("-D_WIN32_WINNT=0x0600")
-SET(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -D_WIN32_WINNT=0x0600")
+# Target Windows 7 / Windows Server 2008 R2 or later, i.e _WIN32_WINNT_WIN7
+ADD_DEFINITIONS(-D_WIN32_WINNT=0x0601)
+SET(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -D_WIN32_WINNT=0x0601")
 
 # Speed up build process excluding unused header files
-ADD_DEFINITIONS("-DWIN32_LEAN_AND_MEAN")
+ADD_DEFINITIONS(-DWIN32_LEAN_AND_MEAN -DNOGDI)
 
 # We want to use std::min/std::max, not the windows.h macros
-ADD_DEFINITIONS("-DNOMINMAX")
-  
-# Should be available on Windows Server 2003 and above.
-CHECK_CXX_SOURCE_COMPILES(
-"#include <Windows.h>
-int main() {
-  GetCurrentProcessorNumber();
-  return 0;
-} " HAVE_GETCURRENTPROCESSORNUMBER)
-IF(HAVE_GETCURRENTPROCESSORNUMBER)
- ADD_DEFINITIONS(-DHAVE_GETCURRENTPROCESSORNUMBER=1)
-ENDIF()
+ADD_DEFINITIONS(-DNOMINMAX)
 
+IF(WITH_MSCRT_DEBUG)
+  ADD_DEFINITIONS(-DMY_MSCRT_DEBUG)
+  ADD_DEFINITIONS(-D_CRTDBG_MAP_ALLOC)
+ENDIF()
+  
 IF(MSVC)
-  # Enable debug info also in Release build, and create PDB to be able to analyze 
-  # crashes
-  FOREACH(lang C CXX)
-    SET(CMAKE_${lang}_FLAGS_RELEASE "${CMAKE_${lang}_FLAGS_RELEASE} /Zi")
-  ENDFOREACH()
+  # Enable debug info also in Release build,
+  # and create PDB to be able to analyze crashes.
   FOREACH(type EXE SHARED MODULE)
-   SET(CMAKE_{type}_LINKER_FLAGS_RELEASE "${CMAKE_${type}_LINKER_FLAGS_RELEASE} /debug")
+   SET(CMAKE_{type}_LINKER_FLAGS_RELEASE
+     "${CMAKE_${type}_LINKER_FLAGS_RELEASE} /debug")
   ENDFOREACH()
   
-  # Force static runtime libraries
-  # Choose C++ exception handling:
-  #   If /EH is not specified, the compiler will catch structured and
-  #   C++ exceptions, but will not destroy C++ objects that will go out of
-  #   scope as a result of the exception.
-  #   /EHsc catches C++ exceptions only and tells the compiler to assume that
-  #   extern C functions never throw a C++ exception.
+  # For release types Debug Release RelWithDebInfo (but not MinSizeRel):
+  # - Force static runtime libraries
+  # - Choose C++ exception handling:
+  #     If /EH is not specified, the compiler will catch structured and
+  #     C++ exceptions, but will not destroy C++ objects that will go out of
+  #     scope as a result of the exception.
+  #     /EHsc catches C++ exceptions only and tells the compiler to assume that
+  #     extern C functions never throw a C++ exception.
+  # - Choose debugging information:
+  #     /Z7
+  #     Produces an .obj file containing full symbolic debugging
+  #     information for use with the debugger. The symbolic debugging
+  #     information includes the names and types of variables, as well as
+  #     functions and line numbers. No .pdb file is produced by the compiler.
+  FOREACH(lang C CXX)
+    SET(CMAKE_${lang}_FLAGS_RELEASE "${CMAKE_${lang}_FLAGS_RELEASE} /Z7")
+  ENDFOREACH()
   FOREACH(flag 
-   CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_RELWITHDEBINFO 
-   CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_DEBUG_INIT 
+   CMAKE_C_FLAGS_RELEASE    CMAKE_C_FLAGS_RELWITHDEBINFO 
+   CMAKE_C_FLAGS_DEBUG      CMAKE_C_FLAGS_DEBUG_INIT 
    CMAKE_CXX_FLAGS_RELEASE  CMAKE_CXX_FLAGS_RELWITHDEBINFO
-   CMAKE_CXX_FLAGS_DEBUG  CMAKE_CXX_FLAGS_DEBUG_INIT)
-#   STRING(REPLACE "/MD"  "/MT" "${flag}" "${${flag}}")
+   CMAKE_CXX_FLAGS_DEBUG    CMAKE_CXX_FLAGS_DEBUG_INIT)
+   STRING(REPLACE "/MD"  "/MT" "${flag}" "${${flag}}")
+   STRING(REPLACE "/Zi"  "/Z7" "${flag}" "${${flag}}")
    SET("${flag}" "${${flag}} /EHsc")
   ENDFOREACH()
   
@@ -109,22 +112,12 @@ IF(MSVC)
   ENDIF()
   
   # Speed up multiprocessor build
-  IF (MSVC_VERSION GREATER 1400)
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
-  ENDIF()
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
   
   #TODO: update the code and remove the disabled warnings
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4800 /wd4805 /wd4996")
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4800 /wd4805 /wd4996 /we4099")
-
-  IF(CMAKE_SIZEOF_VOID_P MATCHES 8)
-    # _WIN64 is defined by the compiler itself. 
-    # Yet, we define it here again   to work around a bug with  Intellisense 
-    # described here: http://tinyurl.com/2cb428. 
-    # Syntax highlighting is important for proper debugger functionality.
-    ADD_DEFINITIONS("-D_WIN64")
-  ENDIF()
 ENDIF()
 
 # Always link with socket library
@@ -141,43 +134,6 @@ ENDIF()
 CHECK_SYMBOL_EXISTS(IPV6_V6ONLY  "winsock2.h;ws2ipdef.h" HAVE_IPV6_V6ONLY)
 IF(NOT HAVE_IPV6_V6ONLY)
   SET(IPV6_V6ONLY 27)
-ENDIF()
-
-# Some standard functions exist there under different
-# names (e.g popen is _popen or strok_r is _strtok_s)
-# If a replacement function exists, HAVE_FUNCTION is
-# defined to 1. CMake variable <function_name> will also
-# be defined to the replacement name.
-# So for example, CHECK_FUNCTION_REPLACEMENT(popen _popen)
-# will define HAVE_POPEN to 1 and set variable named popen
-# to _popen. If the header template, one needs to have
-# cmakedefine popen @popen@ which will expand to 
-# define popen _popen after CONFIGURE_FILE
-
-MACRO(CHECK_SYMBOL_REPLACEMENT symbol replacement header)
-  STRING(TOUPPER ${symbol} symbol_upper)
-  CHECK_SYMBOL_EXISTS(${symbol} ${header} HAVE_${symbol_upper})
-  IF(NOT HAVE_${symbol_upper})
-    CHECK_SYMBOL_EXISTS(${replacement} ${header} HAVE_${replacement})
-    IF(HAVE_${replacement})
-      SET(HAVE_${symbol_upper} 1)
-      SET(${symbol} ${replacement})
-    ENDIF()
-  ENDIF()
-ENDMACRO()
-
-CHECK_SYMBOL_REPLACEMENT(S_IROTH _S_IREAD sys/stat.h)
-CHECK_SYMBOL_REPLACEMENT(S_IFIFO _S_IFIFO sys/stat.h)
-CHECK_SYMBOL_REPLACEMENT(SIGQUIT SIGTERM signal.h)
-CHECK_SYMBOL_REPLACEMENT(SIGPIPE SIGINT signal.h)
-CHECK_SYMBOL_EXISTS(isnan math.h HAVE_ISNAN)
-IF(NOT HAVE_ISNAN)
-  CHECK_SYMBOL_REPLACEMENT(isnan _isnan float.h)
-ENDIF()
-
-CHECK_TYPE_SIZE(ssize_t SIZE_OF_SSIZE_T)
-IF(NOT HAVE_SIZE_OF_SSIZE_T)
- SET(ssize_t SSIZE_T)
 ENDIF()
 
 SET(FN_NO_CASE_SENSE 1)

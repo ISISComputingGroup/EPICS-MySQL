@@ -16,6 +16,11 @@ typedef int opaque_mdl_duration;
 typedef int opaque_mdl_status;
 struct TABLE_SHARE;
 struct sql_digest_storage;
+  struct opaque_THD
+  {
+    int dummy;
+  };
+  typedef struct opaque_THD THD;
 struct PSI_mutex;
 typedef struct PSI_mutex PSI_mutex;
 struct PSI_rwlock;
@@ -50,6 +55,12 @@ struct PSI_sp_locker;
 typedef struct PSI_sp_locker PSI_sp_locker;
 struct PSI_metadata_lock;
 typedef struct PSI_metadata_lock PSI_metadata_lock;
+struct PSI_stage_progress
+{
+  ulonglong m_work_completed;
+  ulonglong m_work_estimated;
+};
+typedef struct PSI_stage_progress PSI_stage_progress;
 struct PSI_bootstrap
 {
   void* (*get_interface)(int version);
@@ -78,7 +89,13 @@ enum PSI_rwlock_operation
   PSI_RWLOCK_READLOCK= 0,
   PSI_RWLOCK_WRITELOCK= 1,
   PSI_RWLOCK_TRYREADLOCK= 2,
-  PSI_RWLOCK_TRYWRITELOCK= 3
+  PSI_RWLOCK_TRYWRITELOCK= 3,
+  PSI_RWLOCK_SHAREDLOCK= 4,
+  PSI_RWLOCK_SHAREDEXCLUSIVELOCK= 5,
+  PSI_RWLOCK_EXCLUSIVELOCK= 6,
+  PSI_RWLOCK_TRYSHAREDLOCK= 7,
+  PSI_RWLOCK_TRYSHAREDEXCLUSIVELOCK= 8,
+  PSI_RWLOCK_TRYEXCLUSIVELOCK= 9
 };
 typedef enum PSI_rwlock_operation PSI_rwlock_operation;
 enum PSI_cond_operation

@@ -16,17 +16,18 @@
 #include "mysys_priv.h"
 #include "my_static.h"
 #include "mysys_err.h"
-#include <m_string.h>
-#include <m_ctype.h>
-#include <signal.h>
-#include <mysql/psi/mysql_stage.h>
+#include "m_string.h"
+#include "mysql/psi/mysql_stage.h"
+
+#ifdef HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif
+
 #ifdef _WIN32
-#ifdef _MSC_VER
 #include <locale.h>
 #include <crtdbg.h>
 /* WSAStartup needs winsock library*/
 #pragma comment(lib, "ws2_32")
-#endif
 my_bool have_tcpip=0;
 static void my_win_init(void);
 static my_bool win32_init_tcp_ip();
@@ -38,7 +39,7 @@ static my_bool win32_init_tcp_ip();
 #define SCALE_USEC      10000
 
 my_bool my_init_done= 0;
-ulong   my_thread_stack_size= 65536;
+ulong  my_thread_stack_size= 65536;
 
 static ulong atoi_octal(const char *str)
 {
@@ -53,6 +54,27 @@ static ulong atoi_octal(const char *str)
 
 MYSQL_FILE *mysql_stdin= NULL;
 static MYSQL_FILE instrumented_stdin;
+
+#if defined(MY_MSCRT_DEBUG)
+int set_crt_report_leaks()
+{
+  HANDLE hLogFile;
+
+  _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF        // debug allocation on
+                 | _CRTDBG_LEAK_CHECK_DF     // leak checks on exit
+                 | _CRTDBG_CHECK_ALWAYS_DF   // memory check (slow)
+                 );
+
+  return ((
+    NULL == (hLogFile= GetStdHandle(STD_ERROR_HANDLE)) ||
+    -1 == _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE) ||
+    _CRTDBG_HFILE_ERROR == _CrtSetReportFile(_CRT_WARN, hLogFile) ||
+    -1 == _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE) ||
+    _CRTDBG_HFILE_ERROR == _CrtSetReportFile(_CRT_ERROR, hLogFile) ||
+    -1 == _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE) ||
+    _CRTDBG_HFILE_ERROR == _CrtSetReportFile(_CRT_ASSERT, hLogFile)) ? 1 : 0);
+}
+#endif
 
 
 /**
@@ -70,6 +92,10 @@ my_bool my_init(void)
     return 0;
 
   my_init_done= 1;
+
+#if defined(MY_MSCRT_DEBUG)
+  set_crt_report_leaks();
+#endif
 
   my_umask= 0660;                       /* Default umask for new files */
   my_umask_dir= 0700;                   /* Default umask for new directories */
@@ -150,7 +176,7 @@ void my_end(int infoflag)
       char ebuff[512];
       my_snprintf(ebuff, sizeof(ebuff), EE(EE_OPEN_WARNING),
                   my_file_opened, my_stream_opened);
-      my_message_stderr(EE_OPEN_WARNING, ebuff, ME_BELL);
+      my_message_stderr(EE_OPEN_WARNING, ebuff, MYF(0));
       DBUG_PRINT("error", ("%s", ebuff));
       my_print_open_files();
     }
@@ -468,6 +494,13 @@ static PSI_mutex_info all_mysys_mutexes[]=
   { &key_THR_LOCK_myisam_mmap, "THR_LOCK_myisam_mmap", PSI_FLAG_GLOBAL}
 };
 
+PSI_rwlock_key key_SAFE_HASH_lock;
+
+static PSI_rwlock_info all_mysys_rwlocks[]=
+{
+  { &key_SAFE_HASH_lock, "SAFE_HASH::lock", 0}
+};
+
 PSI_cond_key key_IO_CACHE_SHARE_cond,
   key_IO_CACHE_SHARE_cond_writer, key_my_thread_var_suspend,
   key_THR_COND_threads;
@@ -528,8 +561,7 @@ static PSI_memory_info all_mysys_memory[]=
   { &key_memory_MY_STAT, "MY_STAT", 0},
   { &key_memory_QUEUE, "QUEUE", 0},
   { &key_memory_DYNAMIC_STRING, "DYNAMIC_STRING", 0},
-  { &key_memory_TREE, "TREE", 0},
-  { &key_memory_radix_sort, "radix_sort", 0}
+  { &key_memory_TREE, "TREE", 0}
 };
 
 void my_init_mysys_psi_keys()
@@ -539,6 +571,9 @@ void my_init_mysys_psi_keys()
 
   count= sizeof(all_mysys_mutexes)/sizeof(all_mysys_mutexes[0]);
   mysql_mutex_register(category, all_mysys_mutexes, count);
+
+  count= sizeof(all_mysys_rwlocks)/sizeof(all_mysys_rwlocks[0]);
+  mysql_rwlock_register(category, all_mysys_rwlocks, count);
 
   count= sizeof(all_mysys_conds)/sizeof(all_mysys_conds[0]);
   mysql_cond_register(category, all_mysys_conds, count);

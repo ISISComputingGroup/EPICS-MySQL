@@ -210,18 +210,6 @@ IF(STATIC_LIB_SUBDIR)
   SET(INSTALL_LIBDIR ${OLD_INSTALL_LIBDIR})
 ENDIF()
 
-# Visual Studio users need debug  static library for debug projects
-INSTALL_DEBUG_SYMBOLS(clientlib)
-IF(MSVC)
-  IF(STATIC_LIB_SUBDIR)
-    INSTALL_DEBUG_TARGET(mysqlclient DESTINATION ${INSTALL_LIBDIR}/${STATIC_LIB_SUBDIR}/debug)
-    INSTALL_DEBUG_TARGET(clientlib DESTINATION ${INSTALL_LIBDIR}/${STATIC_LIB_SUBDIR}/debug)
-  ELSE()
-    INSTALL_DEBUG_TARGET(mysqlclient DESTINATION ${INSTALL_LIBDIR}/debug)
-    INSTALL_DEBUG_TARGET(clientlib DESTINATION ${INSTALL_LIBDIR}/debug)
-  ENDIF()
-ENDIF()
-
 MACRO(GET_TARGET_NAME target out_name)
   GET_TARGET_PROPERTY(location ${target} LOCATION)
   GET_FILENAME_COMPONENT(name ${location} NAME)
@@ -247,6 +235,15 @@ IF(UNIX)
   INSTALL_SYMLINK(mysqlclient
     ${lib_name} ${CMAKE_STATIC_LIBRARY_PREFIX}mysqlclient_r.a
     ${INSTALL_LIBDIR} Development)
+ENDIF()
+
+# In our special "mixed" builds, also install libstlport which will
+# be injected into the build tree by the Sun Studio part of the build.
+
+IF(CMAKE_SYSTEM_NAME MATCHES "SunOS" AND DEFINED ENV{PB2WORKDIR})
+  INSTALL(FILES ${CMAKE_BINARY_DIR}/libstlport.so
+                ${CMAKE_BINARY_DIR}/libstlport.so.1
+          DESTINATION ${INSTALL_LIBDIR} COMPONENT SharedLibraries OPTIONAL)
 ENDIF()
 
 IF(NOT DISABLE_SHARED)

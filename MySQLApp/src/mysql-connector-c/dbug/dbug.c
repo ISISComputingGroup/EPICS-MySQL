@@ -80,10 +80,14 @@
  */
 
 #include <my_global.h>
+#include "my_sys.h"
 #include <m_string.h>
 #include <errno.h>
 #include <ctype.h>
 
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
 #ifdef HAVE_FNMATCH_H
 #include <fnmatch.h>
 #else
@@ -92,6 +96,8 @@
 
 #if defined(_WIN32)
 #include <process.h>
+#else
+#include <signal.h>
 #endif
 
 #ifndef DBUG_OFF
@@ -297,15 +303,8 @@ static int DoTrace(CODE_STATE *cs);
 #define ENABLE_TRACE    3
 #define DISABLE_TRACE   4
 
-        /* Test to see if file is writable */
-#if defined(HAVE_ACCESS)
-static BOOLEAN Writable(const char *pathname);
-        /* Change file owner and group */
-static void ChangeOwner(CODE_STATE *cs, char *pathname);
-        /* Allocate memory for runtime support */
-#endif
-
 static void DoPrefix(CODE_STATE *cs, uint line);
+static BOOLEAN Writable(const char *pathname);
 
 static char *DbugMalloc(size_t size);
 static const char *BaseName(const char *pathname);
@@ -325,40 +324,27 @@ static void DbugVfprintf(FILE *stream, const char* format, va_list args);
 #define ERR_CLOSE "%s: can't close debug file: "
 #define ERR_ABORT "%s: debugger aborting because %s\n"
 
-/*
- *      Macros and defines for testing file accessibility under UNIX and MSDOS.
- */
-
-#undef EXISTS
-#if !defined(HAVE_ACCESS)
-#define EXISTS(pathname) (FALSE)        /* Assume no existance */
-#define Writable(name) (TRUE)
-#else
-#define EXISTS(pathname)         (access(pathname, F_OK) == 0)
-#define WRITABLE(pathname)       (access(pathname, W_OK) == 0)
-#endif
-
 
 /*
 ** Macros to allow dbugging with threads
 */
 
 #include <my_pthread.h>
-static pthread_mutex_t THR_LOCK_dbug;
+static native_mutex_t THR_LOCK_dbug;
 
 /**
   A mutex protecting flushing of gcov data, see _db_flush_gcov_().
   We don't re-use THR_LOCK_dbug, because that would disallow:
   DBUG_LOCK_FILE; ..... DBUG_SUICIDE(); .... DBUG_UNLOCK_FILE;
 */
-static pthread_mutex_t THR_LOCK_gcov;
+static native_mutex_t THR_LOCK_gcov;
 
 /**
   Lock, to protect @c init_settings.
   For performance reasons,
   the member @c init_settings.flags is not protected.
 */
-static rw_lock_t THR_LOCK_init_settings;
+static native_rw_lock_t THR_LOCK_init_settings;
 
 static CODE_STATE *code_state(void)
 {
@@ -374,9 +360,9 @@ static CODE_STATE *code_state(void)
   if (!init_done)
   {
     init_done=TRUE;
-    pthread_mutex_init(&THR_LOCK_dbug, NULL);
-    pthread_mutex_init(&THR_LOCK_gcov, NULL);
-    my_rwlock_init(&THR_LOCK_init_settings, NULL);
+    native_mutex_init(&THR_LOCK_dbug, NULL);
+    native_mutex_init(&THR_LOCK_gcov, NULL);
+    native_rw_init(&THR_LOCK_init_settings);
     memset(&init_settings, 0, sizeof(init_settings));
     init_settings.out_file=stderr;
     init_settings.flags=OPEN_APPEND;
@@ -410,7 +396,7 @@ static void read_lock_stack(CODE_STATE *cs)
   if (cs->stack == &init_settings)
   {
     if (++(cs->m_read_lock_count) == 1)
-      rw_rdlock(&THR_LOCK_init_settings);
+      native_rw_rdlock(&THR_LOCK_init_settings);
   }
 }
 
@@ -423,7 +409,7 @@ static void unlock_stack(CODE_STATE *cs)
   if (cs->stack == &init_settings)
   {
     if (--(cs->m_read_lock_count) == 0)
-      rw_unlock(&THR_LOCK_init_settings);
+      native_rw_unlock(&THR_LOCK_init_settings);
   }
 }
 
@@ -514,7 +500,7 @@ int DbugParse(CODE_STATE *cs, const char *control)
   */
   assert(cs->m_read_lock_count == 0);
   if (stack == &init_settings)
-    rw_wrlock(&THR_LOCK_init_settings);
+    native_rw_wrlock(&THR_LOCK_init_settings);
 
   if (control[0] == '-' && control[1] == '#')
     control+=2;
@@ -546,7 +532,7 @@ int DbugParse(CODE_STATE *cs, const char *control)
     if (stack->next == &init_settings)
     {
       assert(stack != &init_settings);
-      rw_rdlock(&THR_LOCK_init_settings);
+      native_rw_rdlock(&THR_LOCK_init_settings);
 
       /*
         Never share with the global parent - it can change under your feet.
@@ -560,7 +546,7 @@ int DbugParse(CODE_STATE *cs, const char *control)
       stack->keywords= ListCopy(init_settings.keywords);
       stack->processes= ListCopy(init_settings.processes);
 
-      rw_unlock(&THR_LOCK_init_settings);
+      native_rw_unlock(&THR_LOCK_init_settings);
     }
     else
     {
@@ -761,7 +747,7 @@ int DbugParse(CODE_STATE *cs, const char *control)
   }
 
   if (stack == &init_settings)
-    rw_unlock(&THR_LOCK_init_settings);
+    native_rw_unlock(&THR_LOCK_init_settings);
 
   return !rel || f_used;
 }
@@ -1252,7 +1238,7 @@ void _db_enter_(const char *_func_, const char *_file_,
     if (TRACING)
     {
       if (!cs->locked)
-        pthread_mutex_lock(&THR_LOCK_dbug);
+        native_mutex_lock(&THR_LOCK_dbug);
       DoPrefix(cs, _line_);
       Indent(cs, cs->level);
       (void) fprintf(cs->stack->out_file, ">%s\n", cs->func);
@@ -1311,7 +1297,7 @@ void _db_return_(uint _line_, struct _db_stack_frame_ *_stack_frame_)
     if (TRACING)
     {
       if (!cs->locked)
-        pthread_mutex_lock(&THR_LOCK_dbug);
+        native_mutex_lock(&THR_LOCK_dbug);
       DoPrefix(cs, _line_);
       Indent(cs, cs->level);
       (void) fprintf(cs->stack->out_file, "<%s %u\n", cs->func, _line_);
@@ -1435,7 +1421,7 @@ void _db_doprnt_(const char *format,...)
 
   save_errno=errno;
   if (!cs->locked)
-    pthread_mutex_lock(&THR_LOCK_dbug);
+    native_mutex_lock(&THR_LOCK_dbug);
   DoPrefix(cs, cs->u_line);
   if (TRACING)
     Indent(cs, cs->level + 1);
@@ -1450,6 +1436,56 @@ void _db_doprnt_(const char *format,...)
   va_end(args);
 }
 
+
+/*
+ *  FUNCTION
+ *
+ *      _db_doputs_    handle print of debug lines
+ *
+ *  SYNOPSIS
+ *
+ *      VOID _db_doputs_(const char* log)
+ *      const char *log;
+ *
+ *  DESCRIPTION
+ *
+ *      This function handles the printing of the argument via the log
+ *      string.  The line number of the DBUG macro in the source is found in
+ *      u_line.
+ *
+ *      Note that the log string SHOULD NOT include a terminating
+ *      newline, this is supplied automatically.
+ */
+void _db_doputs_(const char *log)
+{
+  CODE_STATE *cs;
+  int save_errno;
+
+  get_code_state_or_return;
+
+  /* Dirty read, for DBUG_PUTS() performance. */
+  if (! DEBUGGING)
+    return;
+
+  read_lock_stack(cs);
+
+  save_errno= errno;
+  if (!cs->locked)
+    native_mutex_lock(&THR_LOCK_dbug);
+  DoPrefix(cs, cs->u_line);
+  if (TRACING)
+    Indent(cs, cs->level + 1);
+  else
+    (void) fprintf(cs->stack->out_file, "%s: ", cs->func);
+  (void) fprintf(cs->stack->out_file, "%s: ", cs->u_keyword);
+  fprintf(cs->stack->out_file, "%s\n", log);
+  DbugFlush(cs);
+  errno= save_errno;
+
+  unlock_stack(cs);
+}
+
+
 /*
  * This function is intended as a
  * vfprintf clone with consistent, platform independent output for 
@@ -1461,7 +1497,6 @@ static void DbugVfprintf(FILE *stream, const char* format, va_list args)
   (void) my_vsnprintf(cvtbuf, sizeof(cvtbuf), format, args);
   (void) fprintf(stream, "%s\n", cvtbuf);
 }
-
 
 /*
  *  FUNCTION
@@ -1497,7 +1532,7 @@ void _db_dump_(uint _line_, const char *keyword,
   if (_db_keyword_(cs, keyword, 0))
   {
     if (!cs->locked)
-      pthread_mutex_lock(&THR_LOCK_dbug);
+      native_mutex_lock(&THR_LOCK_dbug);
     DoPrefix(cs, _line_);
     if (TRACING)
     {
@@ -1832,7 +1867,7 @@ void _db_end_()
   {
     fprintf(stderr, ERR_MISSING_UNLOCK, "(unknown)");
     cs->locked= 0;
-    pthread_mutex_unlock(&THR_LOCK_dbug);
+    native_mutex_unlock(&THR_LOCK_dbug);
   }
 
   while ((discard= cs->stack))
@@ -1843,7 +1878,7 @@ void _db_end_()
     FreeState(cs, discard, 1);
   }
 
-  rw_wrlock(&THR_LOCK_init_settings);
+  native_rw_wrlock(&THR_LOCK_init_settings);
   tmp= init_settings;
   init_settings.flags=    OPEN_APPEND;
   init_settings.out_file= stderr;
@@ -1855,7 +1890,7 @@ void _db_end_()
   init_settings.p_functions= 0;
   init_settings.keywords= 0;
   init_settings.processes= 0;
-  rw_unlock(&THR_LOCK_init_settings);
+  native_rw_unlock(&THR_LOCK_init_settings);
   FreeState(cs, &tmp, 0);
 }
 
@@ -2028,7 +2063,7 @@ static void DoPrefix(CODE_STATE *cs, uint _line_)
   cs->lineno++;
   if (cs->stack->flags & PID_ON)
   {
-    (void) fprintf(cs->stack->out_file, "%-7s: ", my_thread_name());
+    (void) fprintf(cs->stack->out_file, "T@%u: ", mysys_thread_var()->id);
   }
   if (cs->stack->flags & NUMBER_ON)
     (void) fprintf(cs->stack->out_file, "%5d: ", cs->lineno);
@@ -2157,7 +2192,7 @@ static void DBUGCloseFile(CODE_STATE *cs, FILE *fp)
 {
   if (fp != NULL && fp != stderr && fp != stdout && fclose(fp) == EOF)
   {
-    pthread_mutex_lock(&THR_LOCK_dbug);
+    native_mutex_lock(&THR_LOCK_dbug);
     (void) fprintf(cs->stack->out_file, ERR_CLOSE, cs->process);
     perror("");
     DbugFlush(cs);
@@ -2290,17 +2325,15 @@ static const char *BaseName(const char *pathname)
  */
 
 
-#ifndef Writable
-
 static BOOLEAN Writable(const char *pathname)
 {
   BOOLEAN granted;
   char *lastslash;
 
   granted= FALSE;
-  if (EXISTS(pathname))
+  if (my_access(pathname, F_OK) == 0)
   {
-    if (WRITABLE(pathname))
+    if (my_access(pathname, W_OK) == 0)
       granted= TRUE;
   }
   else
@@ -2310,14 +2343,13 @@ static BOOLEAN Writable(const char *pathname)
       *lastslash= '\0';
     else
       pathname= ".";
-    if (WRITABLE(pathname))
+    if (my_access(pathname, W_OK) == 0)
       granted= TRUE;
     if (lastslash != NULL)
       *lastslash= '/';
   }
   return granted;
 }
-#endif
 
 
 /*
@@ -2389,7 +2421,7 @@ static void DbugFlush(CODE_STATE *cs)
       (void) Delay(cs->stack->delay);
   }
   if (!cs->locked)
-    pthread_mutex_unlock(&THR_LOCK_dbug);
+    native_mutex_unlock(&THR_LOCK_dbug);
 } /* DbugFlush */
 
 
@@ -2413,9 +2445,9 @@ void _db_flush_gcov_()
 {
 #ifdef HAVE_GCOV
   // Gcov will assert() if we try to flush in parallel.
-  pthread_mutex_lock(&THR_LOCK_gcov);
+  native_mutex_lock(&THR_LOCK_gcov);
   __gcov_flush();
-  pthread_mutex_unlock(&THR_LOCK_gcov);
+  native_mutex_unlock(&THR_LOCK_gcov);
 #endif
 }
 
@@ -2447,7 +2479,7 @@ void _db_lock_file_()
 {
   CODE_STATE *cs;
   get_code_state_or_return;
-  pthread_mutex_lock(&THR_LOCK_dbug);
+  native_mutex_lock(&THR_LOCK_dbug);
   cs->locked=1;
 }
 
@@ -2456,7 +2488,7 @@ void _db_unlock_file_()
   CODE_STATE *cs;
   get_code_state_or_return;
   cs->locked=0;
-  pthread_mutex_unlock(&THR_LOCK_dbug);
+  native_mutex_unlock(&THR_LOCK_dbug);
 }
 
 const char* _db_get_func_(void)

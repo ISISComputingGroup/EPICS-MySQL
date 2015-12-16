@@ -18,10 +18,6 @@
 #include <errno.h>
 #include "mysys_err.h"
 
-#if defined(__FreeBSD__)
-extern int getosreldate(void);
-#endif
-
 static void make_ftype(char * to,int flag);
 
 /*
@@ -93,7 +89,7 @@ FILE *my_fopen(const char *filename, int flags, myf MyFlags)
     char errbuf[MYSYS_STRERROR_SIZE];
     my_error((flags & O_RDONLY) || (flags == O_RDONLY ) ? EE_FILENOTFOUND :
              EE_CANTCREATEFILE,
-             MYF(ME_BELL+ME_WAITTANG), filename,
+             MYF(0), filename,
              my_errno, my_strerror(errbuf, sizeof(errbuf), my_errno));
   }
   DBUG_RETURN((FILE*) 0);
@@ -123,7 +119,10 @@ static FILE *my_win_freopen(const char *path, const char *mode, FILE *stream)
                         FILE_SHARE_DELETE, NULL,
                         OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL,
                         NULL)) == INVALID_HANDLE_VALUE)
+  {
+    _close(fd);
     return NULL;
+  }
 
   if ((handle_fd= _open_osfhandle((intptr_t)osfh,
                                   _O_APPEND | _O_TEXT)) == -1)
@@ -141,52 +140,6 @@ static FILE *my_win_freopen(const char *path, const char *mode, FILE *stream)
   _close(handle_fd);
 
   return stream;
-}
-
-#elif defined(__FreeBSD__)
-
-/* No close operation hook. */
-
-static int no_close(void *cookie __attribute__((unused)))
-{
-  return 0;
-}
-
-/*
-  A hack around a race condition in the implementation of freopen.
-
-  The race condition steams from the fact that the current fd of
-  the stream is closed before its number is used to duplicate the
-  new file descriptor. This defeats the desired atomicity of the
-  close and duplicate of dup2().
-
-  See PR number 79887 for reference:
-  http://www.freebsd.org/cgi/query-pr.cgi?pr=79887
-*/
-
-static FILE *my_freebsd_freopen(const char *path, const char *mode, FILE *stream)
-{
-  int old_fd;
-  FILE *result;
-
-  flockfile(stream);
-
-  old_fd= fileno(stream);
-
-  /* Use a no operation close hook to avoid having the fd closed. */
-  stream->_close= no_close;
-
-  /* Relies on the implicit dup2 to close old_fd. */
-  result= freopen(path, mode, stream);
-
-  /* If successful, the _close hook was replaced. */
-
-  if (result == NULL)
-    close(old_fd);
-  else
-    funlockfile(result);
-
-  return result;
 }
 
 #endif
@@ -212,16 +165,6 @@ FILE *my_freopen(const char *path, const char *mode, FILE *stream)
 
 #if defined(_WIN32)
   result= my_win_freopen(path, mode, stream);
-#elif defined(__FreeBSD__)
-  /*
-    XXX: Once the fix is ported to the stable releases, this should
-         be dependent upon the specific FreeBSD versions. Check at:
-         http://www.freebsd.org/cgi/query-pr.cgi?pr=79887
-  */
-  if (getosreldate() > 900027)
-    result= freopen(path, mode, stream);
-  else
-    result= my_freebsd_freopen(path, mode, stream);
 #else
   result= freopen(path, mode, stream);
 #endif
@@ -250,7 +193,7 @@ int my_fclose(FILE *fd, myf MyFlags)
     if (MyFlags & (MY_FAE | MY_WME))
     {
       char errbuf[MYSYS_STRERROR_SIZE];
-      my_error(EE_BADCLOSE, MYF(ME_BELL+ME_WAITTANG), my_filename(file),
+      my_error(EE_BADCLOSE, MYF(0), my_filename(file),
                my_errno, my_strerror(errbuf, sizeof(errbuf), my_errno));
     }
   }
@@ -289,7 +232,7 @@ FILE *my_fdopen(File Filedes, const char *name, int Flags, myf MyFlags)
     if (MyFlags & (MY_FAE | MY_WME))
     {
       char errbuf[MYSYS_STRERROR_SIZE];
-      my_error(EE_CANT_OPEN_STREAM, MYF(ME_BELL+ME_WAITTANG),
+      my_error(EE_CANT_OPEN_STREAM, MYF(0),
                my_errno, my_strerror(errbuf, sizeof(errbuf), my_errno));
     }
   }

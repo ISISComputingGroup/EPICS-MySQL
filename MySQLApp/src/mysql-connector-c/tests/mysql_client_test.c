@@ -1019,6 +1019,7 @@ static void test_wl4435_2()
   rc= mysql_stmt_execute(ps); \
   check_execute(ps, rc); \
   \
+  if (!(mysql->server_capabilities & CLIENT_DEPRECATE_EOF)) \
   DIE_UNLESS(mysql->server_status & SERVER_PS_OUT_PARAMS); \
   DIE_UNLESS(mysql_stmt_field_count(ps) == 1); \
   \
@@ -10164,11 +10165,11 @@ static void test_bug3035()
   const uint32 uint32_max= 4294967295U;
 
   /* it might not work okay everyplace */
-  const longlong int64_max= LL(9223372036854775807);
+  const longlong int64_max= 9223372036854775807LL;
   const longlong int64_min= -int64_max - 1;
 
   const ulonglong uint64_min= 0U;
-  const ulonglong uint64_max= ULL(18446744073709551615);
+  const ulonglong uint64_max= 18446744073709551615ULL;
 
   const char *stmt_text;
 
@@ -12846,7 +12847,7 @@ static void test_truncation()
 
   /* double -> longlong, negative fp number to signed integer: no loss */
   DIE_UNLESS(my_bind++ < bind_array + bind_count);
-  DIE_UNLESS(! *my_bind->error && * (longlong*) my_bind->buffer == LL(-12345678910));
+  DIE_UNLESS(! *my_bind->error && * (longlong*) my_bind->buffer == -12345678910LL);
 
   /* big numeric string -> number */
   DIE_UNLESS(my_bind++ < bind_array + bind_count);
@@ -14809,7 +14810,7 @@ static void test_bug12925()
 {
   myheader("test_bug12925");
   if (opt_getopt_ll_test)
-    DIE_UNLESS(opt_getopt_ll_test == LL(25600*1024*1024));
+    DIE_UNLESS(opt_getopt_ll_test == 25600*1024*1024LL);
 }
 
 
@@ -19383,6 +19384,57 @@ static void test_wl6587()
   myquery(rc);
 }
 
+#ifndef EMBEDDED_LIBRARY
+/*
+  Bug #17309863 AUTO RECONNECT DOES NOT WORK WITH 5.6 LIBMYSQLCLIENT
+*/
+static void test_bug17309863()
+{
+  MYSQL *lmysql;
+  unsigned long thread_id;
+  char query[MAX_TEST_QUERY_LENGTH];
+  int rc;
+
+  myheader("test_bug17309863");
+
+  if (!opt_silent)
+    fprintf(stdout, "\n Establishing a test connection ...");
+  if (!(lmysql= mysql_client_init(NULL)))
+  {
+    myerror("mysql_client_init() failed");
+    exit(1);
+  }
+  lmysql->reconnect= 1;
+  if (!(mysql_real_connect(lmysql, opt_host, opt_user,
+                           opt_password, current_db, opt_port,
+                           opt_unix_socket, 0)))
+  {
+    myerror("connection failed");
+    exit(1);
+  }
+  if (!opt_silent)
+    fprintf(stdout, "OK");
+
+  thread_id= mysql_thread_id(lmysql);
+  sprintf(query, "KILL %lu", thread_id);
+
+  /*
+    Running the "KILL <thread_id>" query in a separate connection.
+  */
+  if (thread_query(query))
+    exit(1);
+
+  /*
+    The above KILL statement should have closed our connection. But reconnect
+    flag allows to detect this before sending query and re-establish it without
+    returning an error.
+  */
+  rc= mysql_query(lmysql, "SELECT 'bug17309863'");
+  myquery(rc);
+
+  mysql_close(lmysql);
+}
+#endif
 
 static void test_wl5928()
 {
@@ -19415,10 +19467,13 @@ static void test_wl5928()
   stmt= mysql_simple_prepare(mysql, "GET DIAGNOSTICS");
   DIE_UNLESS(stmt == NULL);
 
+  rc= mysql_query(mysql, "SET SQL_MODE=''");
+  myquery(rc);
+
   /* PREPARE */
 
-  stmt= mysql_simple_prepare(mysql, "CREATE TABLE t1 (f1 YEAR(1))");
-  DIE_UNLESS(mysql_warning_count(mysql) == 1);
+  stmt= mysql_simple_prepare(mysql, "CREATE TABLE t1 (f1 INT) ENGINE=UNKNOWN");
+  DIE_UNLESS(mysql_warning_count(mysql) == 2);
   check_stmt(stmt);
 
   /* SHOW WARNINGS.  (Will keep diagnostics) */
@@ -19427,7 +19482,7 @@ static void test_wl5928()
   result= mysql_store_result(mysql);
   mytest(result);
   rc= my_process_result_set(result);
-  DIE_UNLESS(rc == 1);
+  DIE_UNLESS(rc == 2);
   mysql_free_result(result);
 
   /* EXEC */
@@ -19447,17 +19502,13 @@ static void test_wl5928()
   /* clean up */
   mysql_stmt_close(stmt);
 
-  stmt= mysql_simple_prepare(mysql, "DROP TABLE t1");
-  check_stmt(stmt);
-  rc= mysql_stmt_execute(stmt);
-  check_execute(stmt, rc);
-  mysql_stmt_close(stmt);
-
   stmt= mysql_simple_prepare(mysql, "SELECT 1");
   check_stmt(stmt);
   rc= mysql_stmt_execute(stmt);
   check_execute(stmt, rc);
   mysql_stmt_close(stmt);
+
+  myquery(rc);
 }
 
 static void test_wl6797()
@@ -19550,7 +19601,7 @@ static void test_wl6791()
   my_bool_opts[] = {
     MYSQL_OPT_COMPRESS, MYSQL_OPT_USE_REMOTE_CONNECTION,
     MYSQL_OPT_USE_EMBEDDED_CONNECTION, MYSQL_OPT_GUESS_CONNECTION,
-    MYSQL_SECURE_AUTH, MYSQL_REPORT_DATA_TRUNCATION, MYSQL_OPT_RECONNECT,
+    MYSQL_REPORT_DATA_TRUNCATION, MYSQL_OPT_RECONNECT,
     MYSQL_OPT_SSL_VERIFY_SERVER_CERT, MYSQL_OPT_SSL_ENFORCE,
     MYSQL_ENABLE_CLEARTEXT_PLUGIN, MYSQL_OPT_CAN_HANDLE_EXPIRED_PASSWORDS
   },
@@ -19767,6 +19818,51 @@ static void test_wl5768()
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS ps_t1");
   myquery(rc);
 }
+
+
+/**
+   BUG#17512527: LIST HANDLING INCORRECT IN MYSQL_PRUNE_STMT_LIST()
+*/
+static void test_bug17512527()
+{
+  MYSQL *conn1, *conn2;
+  MYSQL_STMT *stmt1, *stmt2;
+  const char *stmt1_txt= "SELECT NOW();";
+  const char *stmt2_txt= "SELECT 1;";
+  unsigned long thread_id;
+  char query[MAX_TEST_QUERY_LENGTH];
+  int rc;
+
+  conn1= client_connect(0, MYSQL_PROTOCOL_DEFAULT, 1);
+  conn2= client_connect(0, MYSQL_PROTOCOL_DEFAULT, 0);
+
+  stmt1 = mysql_stmt_init(conn1);
+  check_stmt(stmt1);
+  rc= mysql_stmt_prepare(stmt1, stmt1_txt, strlen(stmt1_txt));
+  check_execute(stmt1, rc);
+
+  thread_id= mysql_thread_id(conn1);
+  sprintf(query, "KILL %lu", thread_id);
+  if (thread_query(query))
+    exit(1);
+
+  /*
+    After the connection is killed, the connection is
+    re-established due to the reconnect flag.
+  */
+  stmt2 = mysql_stmt_init(conn1);
+  check_stmt(stmt2);
+
+  rc= mysql_stmt_prepare(stmt2, stmt2_txt, strlen(stmt2_txt));
+  check_execute(stmt1, rc);
+
+  mysql_stmt_close(stmt2);
+  mysql_stmt_close(stmt1);
+
+  mysql_close(conn1);
+  mysql_close(conn2);
+}
+
 
 static struct my_tests_st my_tests[]= {
   { "disable_query_logs", disable_query_logs },
@@ -20041,6 +20137,10 @@ static struct my_tests_st my_tests[]= {
   { "test_wl6797", test_wl6797 },
   { "test_wl6791", test_wl6791 },
   { "test_wl5768", test_wl5768 },
+#ifndef EMBEDDED_LIBRARY
+  { "test_bug17309863", test_bug17309863},
+#endif
+  { "test_bug17512527", test_bug17512527},
   { 0, 0 }
 };
 

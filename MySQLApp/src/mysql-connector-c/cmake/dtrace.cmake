@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,34 +13,26 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA 
 
-IF(CMAKE_SYSTEM_NAME MATCHES "SunOS" AND CMAKE_COMPILER_IS_GNUCXX
-  AND CMAKE_SIZEOF_VOID_P EQUAL 4)
-  IF(NOT DEFINED BUGGY_GCC_NO_DTRACE_MODULES)
-    EXECUTE_PROCESS(
-      COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_COMPILER_ARG1}  --version
-      OUTPUT_VARIABLE out)
-    IF(out MATCHES "3.4.6")
-     # This gcc causes crashes in dlopen() for dtraced shared libs,
-     # while standard shipped with Solaris10 3.4.3 is ok
-     SET(BUGGY_GCC_NO_DTRACE_MODULES 1 CACHE INTERNAL "")
-    ELSE()
-     SET(BUGGY_GCC_NO_DTRACE_MODULES 0 CACHE INTERNAL "")
-    ENDIF()
-  ENDIF()
-ENDIF()
-
 # Check if OS supports DTrace
 MACRO(CHECK_DTRACE)
  FIND_PROGRAM(DTRACE dtrace)
  MARK_AS_ADVANCED(DTRACE)
 
  # On FreeBSD, dtrace does not handle userland tracing yet
- IF(DTRACE AND NOT CMAKE_SYSTEM_NAME MATCHES "FreeBSD"
-     AND NOT BUGGY_GCC_NO_DTRACE_MODULES)
+ IF(DTRACE AND NOT CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
    SET(ENABLE_DTRACE ON CACHE BOOL "Enable dtrace")
  ENDIF()
  SET(HAVE_DTRACE ${ENABLE_DTRACE})
- IF(CMAKE_SYSTEM_NAME MATCHES "SunOS")
+ EXECUTE_PROCESS(
+   COMMAND ${DTRACE} -V
+   OUTPUT_VARIABLE out)
+ IF(out MATCHES "Sun D" OR out MATCHES "Oracle D")
+   IF(NOT CMAKE_SYSTEM_NAME MATCHES "FreeBSD" AND
+      NOT CMAKE_SYSTEM_NAME MATCHES "Darwin")
+     SET(HAVE_REAL_DTRACE_INSTRUMENTING ON CACHE BOOL "Real DTrace detected")
+   ENDIF()
+ ENDIF()
+ IF(HAVE_REAL_DTRACE_INSTRUMENTING)
    IF(SIZEOF_VOIDP EQUAL 4)
      SET(DTRACE_FLAGS -32 CACHE INTERNAL "DTrace architecture flags")
    ELSE()
@@ -83,17 +75,11 @@ IF(ENABLE_DTRACE)
 ENDIF()
 
 FUNCTION(DTRACE_INSTRUMENT target)
-  IF(BUGGY_GCC_NO_DTRACE_MODULES)
-    GET_TARGET_PROPERTY(target_type ${target} TYPE)
-    IF(target_type MATCHES "MODULE_LIBRARY")
-      RETURN()
-    ENDIF()
-  ENDIF()
   IF(ENABLE_DTRACE)
     ADD_DEPENDENCIES(${target} gen_dtrace_header)
 
     # Invoke dtrace to generate object file and link it together with target.
-    IF(CMAKE_SYSTEM_NAME MATCHES "SunOS")
+    IF(HAVE_REAL_DTRACE_INSTRUMENTING)
       SET(objdir ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${target}.dir)
       SET(outfile ${objdir}/${target}_dtrace.o)
       GET_TARGET_PROPERTY(target_type ${target} TYPE)
@@ -110,12 +96,22 @@ FUNCTION(DTRACE_INSTRUMENT target)
         WORKING_DIRECTORY ${objdir}
       )
     ELSEIF(CMAKE_SYSTEM_NAME MATCHES "Linux")
+      # dtrace on Linux runs gcc and uses flags from environment
+      SET(CFLAGS_SAVED $ENV{CFLAGS})
+      # We want to strip off all warning flags, including -Werror=xxx-xx,
+      # but keep flags like
+      #  -Wp,-D_FORTIFY_SOURCE=2
+      STRING(REGEX REPLACE "-W[A-Za-z0-9][-A-Za-z0-9=]+" ""
+        C_FLAGS "${CMAKE_C_FLAGS}")
+
+      SET(ENV{CFLAGS} ${C_FLAGS})
       SET(outfile "${CMAKE_BINARY_DIR}/probes_mysql.o")
       # Systemtap object
       EXECUTE_PROCESS(
         COMMAND ${DTRACE} -G -s ${CMAKE_SOURCE_DIR}/include/probes_mysql.d.base
         -o ${outfile}
         )
+      SET(ENV{CFLAGS} ${CFLAGS_SAVED})
     ENDIF()
 
     # Do not try to extend the library if we have not built the .o file
@@ -151,7 +147,7 @@ ENDFUNCTION()
 # run them again through dtrace -G to generate an ELF file that links
 # to mysqld.
 MACRO (DTRACE_INSTRUMENT_STATIC_LIBS target libs)
-IF(CMAKE_SYSTEM_NAME MATCHES "SunOS" AND ENABLE_DTRACE)
+IF(HAVE_REAL_DTRACE_INSTRUMENTING AND ENABLE_DTRACE)
   # Filter out non-static libraries in the list, if any
   SET(static_libs)
   FOREACH(lib ${libs})

@@ -1,4 +1,4 @@
-/* Copyright (c) 2000, 2013, Oracle and/or its affiliates. All rights reserved.
+/* Copyright (c) 2000, 2014, Oracle and/or its affiliates. All rights reserved.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 #ifndef vio_violite_h_
 #define	vio_violite_h_
 
-#include "my_net.h"   /* needed because of struct in_addr */
 #include <my_pthread.h> /* For pthread_t */
 #include <mysql/psi/psi.h>
 #include <mysql/psi/mysql_socket.h>
@@ -152,7 +151,8 @@ enum enum_ssl_init_error
 {
   SSL_INITERR_NOERROR= 0, SSL_INITERR_CERT, SSL_INITERR_KEY, 
   SSL_INITERR_NOMATCH, SSL_INITERR_BAD_PATHS, SSL_INITERR_CIPHERS, 
-  SSL_INITERR_MEMFAIL, SSL_INITERR_LASTERR
+  SSL_INITERR_MEMFAIL, SSL_INITERR_NO_USABLE_CTX, SSL_INITERR_DHFAIL,
+  SSL_INITERR_LASTERR
 };
 const char* sslGetErrString(enum enum_ssl_init_error err);
 
@@ -219,7 +219,7 @@ struct st_vio
   my_bool       localhost;              /* Are we from localhost? */
   struct sockaddr_storage   local;      /* Local internet address */
   struct sockaddr_storage   remote;     /* Remote internet address */
-  int addrLen;                          /* Length of remote address */
+  size_t addrLen;                       /* Length of remote address */
   enum enum_vio_type    type;           /* Type of connection */
   my_bool               inactive; /* Connection inactive (has been shutdown) */
   char                  desc[VIO_DESCRIPTION_SIZE]; /* Description string. This

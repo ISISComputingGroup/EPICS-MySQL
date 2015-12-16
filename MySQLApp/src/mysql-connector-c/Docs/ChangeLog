@@ -1,10 +1,73 @@
 MySQL Connector/C 6.1 - Release Notes / ChangeLog
-Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  
 Full release notes:
 http://dev.mysql.com/doc/relnotes/connector-c/en/
   
-Changes in MySQL Connector/C 6.1.5
+Changes in MySQL Connector/C 6.1.6
+=====================================================================
+
+   Security Notes
+
+     * Connector/C 6.1.6 upgrades the linked OpenSSL library to
+       version 1.0.1k. Issues fixed in the new version are
+       described at
+       http://www.openssl.org/news/vulnerabilities.html.
+
+   Functionality Added or Changed
+
+     * yaSSL sources included in Connector/C source packages and
+       used in GPL binary distributions were upgraded to version
+       2.3.7. (Bug #20201864)
+
+   Bugs Fixed
+
+     * For source packages, it was not possible to build
+       Connector/C with the client protocol test trace plugin
+       enabled. (Bug #20316149)
+
+     * When there is no change in session state, the OK packet
+       sent from server to the client contained an unneeded byte
+       at the end of the packet. (Bug #19625718)
+
+     * The client protocol trace plugin did not account for the
+       removal of the EOF packet from the client/server protocol
+       in MySQL 5.7.5. (Bug #19512199)
+
+     * The mysql_session_track_get_first() and
+       mysql_session_track_get_next() C API functions could
+       cause a client crash if passed invalid arguments. (Bug
+       #18769620)
+
+     * mysql_config --libs_r produces output containing link
+       flags for libmysqlclient_r, even though that library was
+       removed in MySQL 5.5 and replaced with a symlink to the
+       underlying libmysqlclient library. The output now refers
+       directly to libmysqlclient. (The implication is that it
+       is no longer necessary to maintain the symlink for the
+       sake of being able to use mysql_config --libs_r.) (Bug
+       #73724, Bug #19506315)
+
+     * Invalid memory access could occur when using prepared
+       statements if a mysql client connection was lost after
+       statement preparation was complete and there was at least
+       one statement that was in initialized state but not
+       prepared yet. (Bug #70429, Bug #17512527)
+
+     * Client auto-reconnect did not work for clients linked
+       against libmysqlclient, even with MYSQL_OPT_RECONNECT
+       enabled.
+       Also, if a FEDERATED table was accessed after
+       wait_timeout expired, a Lost connection to MySQL server
+       error occurred without an attempt to re-establish the
+       connection. (Bug #70026, Bug #17309863, Bug #14874, Bug
+       #11745408)
+
+     * mysql_real_connect() could close a file descriptor twice
+       if the server was not running. (Bug #69423, Bug
+       #19226740)
+
+Changes in MySQL Connector/C 6.1.5 (2014-06-17)
 =====================================================================
 
    Connector/C 6.1.5 upgrades the linked OpenSSL library from version

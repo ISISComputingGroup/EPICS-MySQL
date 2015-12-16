@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
 
 The MySQL Connector/C++ is licensed under the terms of the GPLv2
 <http://www.gnu.org/licenses/old-licenses/gpl-2.0.html>, like most
@@ -55,6 +55,17 @@ public:
     TEST_CASE(expired_pwd);
     TEST_CASE(bug71606);
     TEST_CASE(bug72700);
+    TEST_CASE(bug66871);
+    TEST_CASE(bug20085944);
+    TEST_CASE(bug19938873_pstmt);
+    TEST_CASE(bug19938873_stmt);
+    TEST_CASE(bug68523);
+    TEST_CASE(bug66235);
+    TEST_CASE(bug14520822);
+    TEST_CASE(bug17218692);
+    TEST_CASE(bug21053335);
+    TEST_CASE(bug21067193);
+    TEST_CASE(bug21066575);
   }
 
   /**
@@ -85,6 +96,28 @@ public:
   void bug71606();
 
   void bug72700();
+
+  void bug66871();
+
+  void bug20085944();
+
+  void bug19938873_pstmt();
+
+  void bug19938873_stmt();
+
+  void bug68523();
+
+  void bug66235();
+
+  void bug14520822();
+
+  void bug21066575();
+
+  void bug17218692();
+
+  void bug21053335();
+
+  void bug21067193();
 
 };
 

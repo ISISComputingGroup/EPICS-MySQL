@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
 
 The MySQL Connector/C++ is licensed under the terms of the GPLv2
 <http://www.gnu.org/licenses/old-licenses/gpl-2.0.html>, like most
@@ -56,7 +56,7 @@ MySQL_NativeStatementWrapper::MySQL_NativeStatementWrapper(::st_mysql_stmt * _st
 /* {{{ MySQL_NativeStatementWrapper::~MySQL_NativeStatementWrapper() */
 MySQL_NativeStatementWrapper::~MySQL_NativeStatementWrapper()
 {
-	api->stmt_close(stmt);
+    api->stmt_close(stmt);
 }
 /* }}} */
 
@@ -233,6 +233,24 @@ int
 MySQL_NativeStatementWrapper::store_result()
 {
 	return api->stmt_store_result(stmt);
+}
+/* }}} */
+
+
+/* {{{ MySQL_NativeStatementWrapper::next_result() */
+int
+MySQL_NativeStatementWrapper::stmt_next_result()
+{
+	return api->stmt_next_result(stmt);
+}
+/* }}} */
+
+
+/* {{{ MySQL_NativeStatementWrapper::stmt_free_result() */
+bool
+MySQL_NativeStatementWrapper::stmt_free_result()
+{
+	return api->stmt_free_result(stmt);
 }
 /* }}} */
 

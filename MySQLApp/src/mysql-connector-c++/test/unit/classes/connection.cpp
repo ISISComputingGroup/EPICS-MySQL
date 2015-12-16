@@ -28,9 +28,13 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "connection.h"
 #include <stdlib.h>
+#include <fstream>
 #include <cppconn/connection.h>
 #include <driver/mysql_connection.h>
 #include <cppconn/exception.h>
+
+#include <boost/scoped_ptr.hpp>
+#include <list>
 
 namespace testsuite
 {
@@ -156,22 +160,117 @@ void connection::getClientOption()
       /* compiled without -DWE_SUPPORT_USE_RESULT_WITH_PS */
     }
 
-    /*
-     TODO
+    try
     {
       sql::SQLString input_value("latin1");
-      sql::SQLString output_value("latin2");
-      void * input;
-      void * output;
+      sql::SQLString output_value;
 
-      input=(static_cast<sql::SQLString *> (&input_value));
-      output=(static_cast<sql::SQLString *> (&output_value));
+      con->setClientOption("characterSetResults", input_value);
 
-      con->setClientOption("characterSetResults", input);
-      con->getClientOption("characterSetResults", output);
+      output_value=con->getClientOption("characterSetResults");
       ASSERT_EQUALS(input_value, output_value);
     }
-     */
+    catch (sql::SQLException &e)
+    {
+      logErr(e.what());
+      logErr("SQLState: " + std::string(e.getSQLState()));
+      fail(e.what(), __FILE__, __LINE__);
+    }
+
+    int serverVersion=getMySQLVersion(con);
+    if ( serverVersion >= 57003)
+    {
+      try
+      {
+        sql::ConnectOptionsMap opts;
+        int input_value=111;
+        int output_value=2367;
+        void * output;
+
+        opts["hostName"]=url;
+        opts["userName"]=user;
+        opts["password"]=passwd;
+        opts["OPT_READ_TIMEOUT"]=111;
+
+        created_objects.clear();
+        con.reset(driver->connect(opts));
+
+        output=(static_cast<int *> (&output_value));
+        con->getClientOption("OPT_READ_TIMEOUT", output);
+        ASSERT_EQUALS(input_value, output_value);
+      }
+      catch (sql::SQLException &e)
+      {
+        logErr(e.what());
+        logErr("SQLState: " + std::string(e.getSQLState()));
+        fail(e.what(), __FILE__, __LINE__);
+      }
+
+      try
+      {
+        sql::ConnectOptionsMap opts;
+        bool input_value=true;
+        bool output_value=false;
+        void * output;
+
+        opts["hostName"]=url;
+        opts["userName"]=user;
+        opts["password"]=passwd;
+        opts["OPT_RECONNECT"]=input_value;
+
+        created_objects.clear();
+        con.reset(driver->connect(opts));
+
+        output=(static_cast<bool *> (&output_value));
+        con->getClientOption("OPT_RECONNECT", output);
+        ASSERT_EQUALS(input_value, output_value);
+      }
+      catch (sql::SQLException &e)
+      {
+        logErr(e.what());
+        logErr("SQLState: " + std::string(e.getSQLState()));
+        fail(e.what(), __FILE__, __LINE__);
+      }
+
+      try
+      {
+        sql::ConnectOptionsMap opts;
+        sql::SQLString input_value("../lib/plugin/");
+        char *output_value="../lib/plugin/";
+        void * output;
+
+        opts["hostName"]=url;
+        opts["userName"]=user;
+        opts["password"]=passwd;
+        opts["pluginDir"]=input_value;
+
+        created_objects.clear();
+        con.reset(driver->connect(opts));
+
+        output=(static_cast<char **> (&output_value));
+        con->getClientOption("pluginDir", output);
+
+        ASSERT_EQUALS(input_value, output_value);
+      }
+      catch (sql::SQLException &e)
+      {
+        logErr(e.what());
+        logErr("SQLState: " + std::string(e.getSQLState()));
+        fail(e.what(), __FILE__, __LINE__);
+      }
+    }
+
+    try
+    {
+      sql::SQLString tmp=con->getClientOption("characterSetDirectory");
+      tmp=con->getClientOption("readDefaultFile");
+    }
+    catch (sql::SQLException &e)
+    {
+      logErr(e.what());
+      logErr("SQLState: " + std::string(e.getSQLState()));
+      fail(e.what(), __FILE__, __LINE__);
+    }
 
   }
   catch (sql::SQLException &e)
@@ -188,7 +287,7 @@ void connection::getSessionVariable()
   try
   {
     std::string value("");
-    std::auto_ptr< sql::mysql::MySQL_Connection > my_con(dynamic_cast<sql::mysql::MySQL_Connection*> (driver->connect(url, user, passwd)));
+    boost::scoped_ptr< sql::mysql::MySQL_Connection > my_con(dynamic_cast<sql::mysql::MySQL_Connection*> (driver->connect(url, user, passwd)));
     value=my_con->getSessionVariable("sql_mode");
 
     my_con->setSessionVariable("sql_mode", "ANSI");
@@ -327,7 +426,7 @@ void connection::invalidCredentials()
       myuser.append(user);
       try
       {
-        con.reset(driver->connect(url, myuser, passwd));
+        con.reset(driver->connect(url, myuser, myuser));
         FAIL("... using invalid user should have failed");
       }
       catch (sql::SQLException &)
@@ -336,7 +435,7 @@ void connection::invalidCredentials()
         con.reset(driver->connect(url, user, passwd));
         try
         {
-          con.reset(driver->connect(url, myuser, passwd));
+          con.reset(driver->connect(url, myuser, myuser));
           FAIL("Should have caused exception");
         }
         catch (sql::SQLException &)
@@ -2229,7 +2328,7 @@ void connection::loadSameLibraryTwice()
    in second case the error has to be different */
 void connection::enableClearTextAuth()
 {
-  int serverVersion= getMySQLVersion(con);
+  int serverVersion=getMySQLVersion(con);
   if ( serverVersion < 55027 || serverVersion > 56000 && serverVersion < 56007)
   {
     SKIP("The server does not support tested functionality(cleartext plugin enabling)");
@@ -2257,11 +2356,11 @@ void connection::enableClearTextAuth()
   sql::ConnectOptionsMap opts;
   testsuite::Connection c2;
 
-  opts["userName"]= sql::SQLString("t_ct_user");
-  opts["password"]= sql::SQLString("foo");
+  opts["userName"]=sql::SQLString("t_ct_user");
+  opts["password"]=sql::SQLString("foo");
 
-  /* 
-    Expecting error CR_AUTH_PLUGIN_CANNOT_LOAD_ERROR 
+  /*
+    Expecting error CR_AUTH_PLUGIN_CANNOT_LOAD_ERROR
     without option ENABLE_CLEARTEXT_PLUGIN
   */
   try
@@ -2273,13 +2372,13 @@ void connection::enableClearTextAuth()
     /* We should have dropped the created user here if assertion fails -
        TODO: Add sort of dropSchemaObject for created users in tearDown */
     ASSERT_EQUALS(2059, e.getErrorCode()/*CR_AUTH_PLUGIN_CANNOT_LOAD_ERROR*/);
-  }  
+  }
 
-  /* 
-    Expecting error other then CR_AUTH_PLUGIN_CANNOT_LOAD_ERROR 
+  /*
+    Expecting error other then CR_AUTH_PLUGIN_CANNOT_LOAD_ERROR
     as option ENABLE_CLEARTEXT_PLUGIN is used
   */
-  opts["OPT_ENABLE_CLEARTEXT_PLUGIN"]= true;
+  opts["OPT_ENABLE_CLEARTEXT_PLUGIN"]=true;
 
   try
   {
@@ -2296,36 +2395,556 @@ void connection::enableClearTextAuth()
 
 void connection::connectAttrAdd()
 {
-  logMsg("connection::connectAttrAdd - MYSQL_OPT_CONNECT_ATTR_ADD");
+  logMsg("connection::connectAttr - MYSQL_OPT_CONNECT_ATTR_ADD|MYSQL_OPT_CONNECT_ATTR_DELETE");
+  int serverVersion=getMySQLVersion(con);
+  if ( serverVersion < 56006)
+  {
+    SKIP("The server does not support tested functionality(cleartext plugin enabling)");
+  }
 
   try
   {
-    sql::ConnectOptionsMap connection_properties;
+    testsuite::Connection conn1;
+    sql::ConnectOptionsMap opts;
     std::map< sql::SQLString, sql::SQLString > connectAttrMap;
-    connectAttrMap["keyConnectAttrAdd1"] = "value1";
-    connectAttrMap["keyConnectAttrAdd2"] = "value2";
+    std::list< std::string > connectAttrList;
 
-    connection_properties["hostName"]=url;
-    connection_properties["userName"]=user;
-    connection_properties["password"]=passwd;
+    opts["hostName"]=url;
+    opts["userName"]=user;
+    opts["password"]=passwd;
 
-    connection_properties.erase("OPT_CONNECT_ATTR_ADD");
-    connection_properties["OPT_CONNECT_ATTR_ADD"]= connectAttrMap;
+    connectAttrMap["keyc1"]="value1";
+    connectAttrMap["keyc2"]="value2";
+    connectAttrMap["keyc3"]="value3";
+    connectAttrMap["keyc4"]="value4";
+    connectAttrMap["keyc5"]="value5";
+
+    connectAttrList.push_back(std::string("keyc2"));
+    connectAttrList.push_back(std::string("keyc5"));
+
+    opts.erase("OPT_CONNECT_ATTR_ADD");
+    opts.erase("OPT_CONNECT_ATTR_DELETE");
+    opts["OPT_CONNECT_ATTR_ADD"]=connectAttrMap;
+    opts["OPT_CONNECT_ATTR_DELETE"]=connectAttrList;
 
     created_objects.clear();
-    con.reset(driver->connect(connection_properties));
+    conn1.reset(driver->connect(opts));
 
-    stmt.reset(con->createStatement());
+    stmt.reset(conn1->createStatement());
     res.reset(stmt->executeQuery("SELECT ATTR_NAME, ATTR_VALUE FROM "
                 "performance_schema.session_account_connect_attrs WHERE "
-                "ATTR_NAME LIKE '%keyConnectAttrAdd%' ORDER BY ATTR_NAME ASC;"));
-    res->next();
-    ASSERT_EQUALS(res->getString("ATTR_NAME"), "keyConnectAttrAdd1");
+                "ATTR_NAME LIKE '%keyc%' ORDER BY ATTR_NAME ASC;"));
+    ASSERT(res->next());
+    ASSERT_EQUALS(res->getString("ATTR_NAME"), "keyc1");
     ASSERT_EQUALS(res->getString("ATTR_VALUE"), "value1");
 
-    res->next();
-    ASSERT_EQUALS(res->getString("ATTR_NAME"), "keyConnectAttrAdd2");
+    ASSERT(res->next());
+    ASSERT_EQUALS(res->getString("ATTR_NAME"), "keyc3");
+    ASSERT_EQUALS(res->getString("ATTR_VALUE"), "value3");
+
+    ASSERT(res->next());
+    ASSERT_EQUALS(res->getString("ATTR_NAME"), "keyc4");
+    ASSERT_EQUALS(res->getString("ATTR_VALUE"), "value4");
+
+    ASSERT(!res->next());
+  }
+  catch (sql::SQLException &e)
+  {
+    logErr(e.what());
+    logErr("SQLState: " + std::string(e.getSQLState()));
+    fail(e.what(), __FILE__, __LINE__);
+  }
+
+
+  /*
+    Check for empty OPT_CONNECT_ATTR_ADD map
+    should not result in errors
+  */
+  try
+  {
+    testsuite::Connection conn1;
+    sql::ConnectOptionsMap opts;
+    std::map< sql::SQLString, sql::SQLString > connectAttrMap;
+
+    opts["hostName"]=url;
+    opts["userName"]=user;
+    opts["password"]=passwd;
+
+    opts.erase("OPT_CONNECT_ATTR_ADD");
+    opts["OPT_CONNECT_ATTR_ADD"]=connectAttrMap;
+
+    created_objects.clear();
+    conn1.reset(driver->connect(opts));
+
+    stmt.reset(conn1->createStatement());
+    res.reset(stmt->executeQuery("SELECT 1"));
+    ASSERT(res->next());
+    ASSERT_EQUALS(res->getInt(1), 1);
+
+    ASSERT(!res->next());
+  }
+  catch (sql::SQLException &e)
+  {
+    logErr(e.what());
+    logErr("SQLState: " + std::string(e.getSQLState()));
+    fail(e.what(), __FILE__, __LINE__);
+  }
+
+
+  /*
+    Check for empty OPT_CONNECT_ATTR_DELETE list
+  */
+  try
+  {
+    testsuite::Connection conn1;
+    sql::ConnectOptionsMap opts;
+    std::map< sql::SQLString, sql::SQLString > connectAttrMap;
+    std::list< std::string > connectAttrList;
+
+    opts["hostName"]=url;
+    opts["userName"]=user;
+    opts["password"]=passwd;
+
+    connectAttrMap["keya1"]="value1";
+    connectAttrMap["keya2"]="value2";
+
+    opts.erase("OPT_CONNECT_ATTR_ADD");
+    opts.erase("OPT_CONNECT_ATTR_DELETE");
+    opts["OPT_CONNECT_ATTR_ADD"]=connectAttrMap;
+    opts["OPT_CONNECT_ATTR_DELETE"]=connectAttrList;
+
+    created_objects.clear();
+    conn1.reset(driver->connect(opts));
+
+    stmt.reset(conn1->createStatement());
+    res.reset(stmt->executeQuery("SELECT ATTR_NAME, ATTR_VALUE FROM "
+                "performance_schema.session_account_connect_attrs WHERE "
+                "ATTR_NAME LIKE '%keya%' ORDER BY ATTR_NAME ASC;"));
+    ASSERT(res->next());
+    ASSERT_EQUALS(res->getString("ATTR_NAME"), "keya1");
+    ASSERT_EQUALS(res->getString("ATTR_VALUE"), "value1");
+
+    ASSERT(res->next());
+    ASSERT_EQUALS(res->getString("ATTR_NAME"), "keya2");
     ASSERT_EQUALS(res->getString("ATTR_VALUE"), "value2");
+
+    ASSERT(!res->next());
+  }
+  catch (sql::SQLException &e)
+  {
+    logErr(e.what());
+    logErr("SQLState: " + std::string(e.getSQLState()));
+    fail(e.what(), __FILE__, __LINE__);
+  }
+
+  /*
+    Check with inserting max allowed key-value pair i.e. lesser then size
+    of performance_schema_session_connect_attrs_size
+  */
+  try
+  {
+    testsuite::Connection conn1;
+    sql::ConnectOptionsMap opts;
+    int max_count;
+
+    opts["hostName"]=url;
+    opts["userName"]=user;
+    opts["password"]=passwd;
+
+    created_objects.clear();
+    conn1.reset(driver->connect(opts));
+
+    stmt.reset(conn1->createStatement());
+    res.reset(stmt->executeQuery("SHOW VARIABLES LIKE "
+                      "'performance_schema_session_connect_attrs_size';"));
+
+    ASSERT(res->next());
+    ASSERT_EQUALS(res->getString("Variable_name"), "performance_schema_session_connect_attrs_size");
+    int perf_conn_attr_size= res->getInt("Value");
+    if (perf_conn_attr_size < 512) {
+      SKIP("The performance_schema_session_connect_attrs_size is less then 512");
+    } else if (perf_conn_attr_size >= 512 && perf_conn_attr_size < 1024) {
+      max_count= 32;
+    } else if (perf_conn_attr_size >= 1024 && perf_conn_attr_size < 2048) {
+      max_count= 64;
+    } else if (perf_conn_attr_size >= 2048) {
+      max_count= 128;
+    }
+
+    try
+    {
+      testsuite::Connection conn2;
+      std::map< sql::SQLString, sql::SQLString > connectAttrMap;
+      std::list< std::string > connectAttrList;
+      std::stringstream skey;
+      int i;
+
+      for (i=1; i <= max_count; ++i) {
+        skey.str("");
+        skey << "keymu" << i;
+        connectAttrMap[skey.str()] = "value";
+      }
+
+      opts.erase("OPT_CONNECT_ATTR_ADD");
+      opts.erase("OPT_CONNECT_ATTR_DELETE");
+      opts["OPT_CONNECT_ATTR_ADD"]= connectAttrMap;
+
+      created_objects.clear();
+      conn2.reset(driver->connect(opts));
+
+      stmt.reset(conn2->createStatement());
+      res.reset(stmt->executeQuery("SELECT ATTR_NAME, ATTR_VALUE FROM "
+            "performance_schema.session_account_connect_attrs WHERE "
+            "ATTR_NAME LIKE '%keymu%' ORDER BY SUBSTRING(ATTR_NAME, 6)+0 ASC;"));
+
+      i=0;
+      while (res->next()) {
+        skey.str("");
+        skey << "keymu" << ++i;
+        ASSERT_EQUALS(res->getString("ATTR_NAME"), skey.str());
+        ASSERT_EQUALS(res->getString("ATTR_VALUE"), "value");
+      }
+      ASSERT(max_count == i);
+
+      ASSERT(!res->next());
+    }
+    catch (sql::SQLException &e)
+    {
+      logErr(e.what());
+      logErr("SQLState: " + std::string(e.getSQLState()));
+      fail(e.what(), __FILE__, __LINE__);
+    }
+  }
+  catch (sql::SQLException &e)
+  {
+    logErr(e.what());
+    logErr("SQLState: " + std::string(e.getSQLState()));
+    fail(e.what(), __FILE__, __LINE__);
+  }
+}
+
+
+void connection::connectAttrReset()
+{
+  logMsg("connection::connectAttr - MYSQL_OPT_CONNECT_ATTR_RESET");
+  int serverVersion= getMySQLVersion(con);
+  if ( serverVersion < 50606)
+  {
+    SKIP("The server does not support tested functionality(cleartext plugin enabling)");
+  }
+
+  try
+  {
+    testsuite::Connection conn2;
+    sql::ConnectOptionsMap opts;
+    std::map< sql::SQLString, sql::SQLString > connectAttrMap;
+
+    opts["hostName"]=url;
+    opts["userName"]=user;
+    opts["password"]=passwd;
+
+    connectAttrMap["keyd1"]="value1";
+    connectAttrMap["keyd2"]="value2";
+    connectAttrMap["keyd3"]="value3";
+
+    opts.erase("OPT_CONNECT_ATTR_ADD");
+    opts["OPT_CONNECT_ATTR_ADD"]=connectAttrMap;
+    opts["OPT_CONNECT_ATTR_RESET"]=0;
+
+    created_objects.clear();
+    conn2.reset(driver->connect(opts));
+
+    stmt.reset(conn2->createStatement());
+    res.reset(stmt->executeQuery("SELECT ATTR_NAME, ATTR_VALUE FROM "
+                "performance_schema.session_account_connect_attrs WHERE "
+                "ATTR_NAME LIKE '%keyd%' ORDER BY ATTR_NAME ASC;"));
+    ASSERT(!res->next());
+  }
+  catch (sql::SQLException &e)
+  {
+    logErr(e.what());
+    logErr("SQLState: " + std::string(e.getSQLState()));
+    fail(e.what(), __FILE__, __LINE__);
+  }
+}
+
+
+void connection::connectCharsetDir()
+{
+  try
+  {
+    sql::ConnectOptionsMap opts;
+    sql::SQLString charDir("/tmp/");
+
+    opts["hostName"]=url;
+    opts["userName"]=user;
+    opts["password"]=passwd;
+    opts["charsetDir"]=charDir;
+
+    created_objects.clear();
+    con.reset(driver->connect(opts));
+
+    sql::SQLString outDir=con->getClientOption("characterSetDirectory");
+    ASSERT_EQUALS(charDir, outDir);
+  }
+  catch (sql::SQLException &e)
+  {
+    logErr(e.what());
+    logErr("SQLState: " + std::string(e.getSQLState()));
+    fail(e.what(), __FILE__, __LINE__);
+  }
+}
+
+
+void connection::connectSSLEnforce()
+{
+  try
+  {
+    sql::ConnectOptionsMap opts;
+
+    opts["hostName"]=url;
+    opts["userName"]=user;
+    opts["password"]=passwd;
+    opts["sslEnforce"]=true;
+
+    created_objects.clear();
+    con.reset(driver->connect(opts));
+  }
+  catch (sql::SQLException &e)
+  {
+    ASSERT_EQUALS(2026, e.getErrorCode() /*CR_SSL_CONNECTION_ERROR*/);
+  }
+}
+
+
+void connection::setAuthDir()
+{
+  logMsg("connection::setAuthDir - MYSQL_PLUGIN_DIR");
+  int serverVersion=getMySQLVersion(con);
+  if ( serverVersion >= 50703 )
+  {
+    SKIP("Server version >= 5.7.3 needed to run this test");
+  }
+
+  try
+  {
+    testsuite::Connection conn1;
+    sql::ConnectOptionsMap opts;
+    sql::SQLString in_plugin_dir;
+
+    opts["hostName"]=url;
+    opts["userName"]=user;
+    opts["password"]=passwd;
+#ifdef _WIN32
+    in_plugin_dir=sql::SQLString("C:\test_plugin");
+#else
+    in_plugin_dir=sql::SQLString("\tmp\test_plugin");
+#endif //_WIN32
+
+    opts["pluginDir"]=in_plugin_dir;
+    created_objects.clear();
+    conn1.reset(driver->connect(opts));
+
+    sql::SQLString out_plugin_dir=conn1->getClientOption(sql::SQLString("pluginDir"));
+
+    ASSERT_EQUALS(in_plugin_dir, out_plugin_dir);
+
+  }
+  catch (sql::SQLException &e)
+  {
+    logErr(e.what());
+    logErr("SQLState: " + std::string(e.getSQLState()));
+    fail(e.what(), __FILE__, __LINE__);
+  }
+}
+
+
+void connection::setDefaultAuth()
+{
+  logMsg("connection::setDefaultAuth - MYSQL_DEFAULT_AUTH");
+  int serverVersion=getMySQLVersion(con);
+  if ( serverVersion < 50703 )
+  {
+    SKIP("Server version >= 5.7.3 needed to run this test");
+  }
+
+  try
+  {
+    testsuite::Connection conn1;
+    sql::ConnectOptionsMap opts;
+    sql::SQLString in_plugin_dir;
+    sql::SQLString def_auth("test_set_default_password");
+
+    opts["hostName"]=url;
+    opts["userName"]=user;
+    opts["password"]=passwd;
+    opts["defaultAuth"]=def_auth;
+    created_objects.clear();
+
+    try
+    {
+      conn1.reset(driver->connect(opts));
+    }
+    catch (sql::SQLException &e)
+    {
+      /* Error expected as trying to load unknown authentication plugin */
+      ASSERT_EQUALS(2059, e.getErrorCode()/*CR_AUTH_PLUGIN_CANNOT_LOAD_ERROR*/);
+    }
+  }
+  catch (sql::SQLException &e)
+  {
+    logErr(e.what());
+    logErr("SQLState: " + std::string(e.getSQLState()));
+    fail(e.what(), __FILE__, __LINE__);
+  }
+}
+
+
+void connection::localInfile()
+{
+  logMsg("connection::setDefaultAuth - MYSQL_OPT_LOCAL_INFILE");
+
+#ifdef _UNIX_
+  try
+  {
+    testsuite::Connection conn1;
+    sql::ConnectOptionsMap opts;
+    sql::SQLString in_plugin_dir;
+    sql::SQLString schema("test");
+    std::ofstream infile;
+
+    infile.open("test_infile.txt");
+    infile << "1,\"val1\"\n";
+    infile << "2,\"val2\"\n";
+
+    infile.close();
+
+    opts["hostName"]=url;
+    opts["userName"]=user;
+    opts["password"]=passwd;
+    opts["schema"]=schema;
+    opts["OPT_LOCAL_INFILE"]=1;
+    created_objects.clear();
+    conn1.reset(driver->connect(opts));
+
+    stmt.reset(conn1->createStatement());
+    stmt->execute("DROP TABLE IF EXISTS test_local_infile");
+    stmt->execute("CREATE TABLE test_local_infile(id INT, value VARCHAR(20))");
+    stmt->execute("LOAD DATA LOCAL INFILE 'test_infile.txt' "
+          "INTO TABLE test_local_infile FIELDS TERMINATED BY ',' OPTIONALLY "
+          "ENCLOSED BY '\"' LINES TERMINATED BY '\n'");
+
+    res.reset(stmt->executeQuery("SELECT * FROM test_local_infile ORDER BY id ASC;"));
+    ASSERT(res->next());
+    ASSERT_EQUALS("1", res->getInt(1));
+    ASSERT_EQUALS("val1", res->getString(2));
+
+    ASSERT(res->next());
+    ASSERT_EQUALS("2", res->getInt(1));
+    ASSERT_EQUALS("val2", res->getString(2));
+    ASSERT(!res->next());
+}
+  catch (sql::SQLException &e)
+  {
+    logErr(e.what());
+    logErr("SQLState: " + std::string(e.getSQLState()));
+    fail(e.what(), __FILE__, __LINE__);
+  }
+#endif //_UNIX_
+}
+
+
+void connection::isValid()
+{
+  logMsg("connection::isValid");
+
+  try
+  {
+    if (!con->isValid())
+    {
+      FAIL("Connection is not active");
+    }
+  }
+  catch (sql::SQLException &e)
+  {
+    logErr(e.what());
+    logErr("SQLState: " + std::string(e.getSQLState()));
+    fail(e.what(), __FILE__, __LINE__);
+  }
+}
+
+
+void connection::reconnect()
+{
+  logMsg("connection::connectOptReconnect - OPT_RECONNECT");
+
+  logMsg("OPT_RECONNECT disabled");
+  try
+  {
+    try
+    {
+      sql::ConnectOptionsMap connection_properties;
+
+      connection_properties["hostName"]=url;
+      connection_properties["userName"]=user;
+      connection_properties["password"]=passwd;
+      connection_properties["OPT_READ_TIMEOUT"]=1;
+
+      connection_properties.erase("OPT_RECONNECT");
+      connection_properties["OPT_RECONNECT"]=false;
+
+      created_objects.clear();
+      con.reset(driver->connect(connection_properties));
+      con->setSchema(db);
+      stmt.reset(con->createStatement());
+      res.reset(stmt->executeQuery("SELECT sleep(10);"));
+      FAIL("Connection didn't timed out");
+    }
+    catch (sql::SQLException /*&e*/)
+    {
+      ASSERT(con->reconnect());
+      res.reset(stmt->executeQuery("SELECT 1;"));
+      ASSERT(res->next());
+      ASSERT_EQUALS(res->getInt(1), 1);
+    }
+  }
+  catch (sql::SQLException &e)
+  {
+    logErr(e.what());
+    logErr("SQLState: " + std::string(e.getSQLState()));
+    fail(e.what(), __FILE__, __LINE__);
+  }
+
+
+  logMsg("OPT_RECONNECT enabled");
+  try
+  {
+    try
+    {
+      sql::ConnectOptionsMap connection_properties;
+
+      connection_properties["hostName"]=url;
+      connection_properties["userName"]=user;
+      connection_properties["password"]=passwd;
+      connection_properties["OPT_READ_TIMEOUT"]=1;
+
+      connection_properties.erase("OPT_RECONNECT");
+      connection_properties["OPT_RECONNECT"]=true;
+
+      created_objects.clear();
+      con.reset(driver->connect(connection_properties));
+      con->setSchema(db);
+      stmt.reset(con->createStatement());
+      res.reset(stmt->executeQuery("SELECT sleep(10);"));
+      FAIL("Connection didn't timed out");
+    }
+    catch (sql::SQLException /*&e*/)
+    {
+      ASSERT(con->reconnect());
+      res.reset(stmt->executeQuery("SELECT 1;"));
+      ASSERT(res->next());
+      ASSERT_EQUALS(res->getInt(1), 1);
+    }
   }
   catch (sql::SQLException &e)
   {

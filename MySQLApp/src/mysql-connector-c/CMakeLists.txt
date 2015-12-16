@@ -13,8 +13,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 
-# There's a bug in unzipping prior to 2.8.2
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.2)
+IF(WIN32 AND MSVC12)
+  # CMake 2.8.12 is needed for Visual Studio 2013
+  CMAKE_MINIMUM_REQUIRED(VERSION 2.8.12)
+ELSE()
+  # There's a bug in unzipping prior to 2.8.2
+  CMAKE_MINIMUM_REQUIRED(VERSION 2.8.2)
+ENDIF()
 
 # We use CMAKE_SHARED_LIBRARY_<Lang>_FLAGS. See cmake --help-policy CMP0018
 IF(CMAKE_VERSION VERSION_GREATER "2.8.8")
@@ -25,6 +30,16 @@ ENDIF()
 IF(CMAKE_VERSION VERSION_EQUAL "2.8.12" OR
    CMAKE_VERSION VERSION_GREATER "2.8.12")
  CMAKE_POLICY(SET CMP0022 OLD)
+ENDIF()
+
+# We use the LOCATION target property (CMP0026)
+# and get_target_property() for non-existent targets (CMP0045)
+# and INSTALL_NAME_DIR (CMP0042)
+IF(CMAKE_VERSION VERSION_EQUAL "3.0.0" OR
+   CMAKE_VERSION VERSION_GREATER "3.0.0")
+ CMAKE_POLICY(SET CMP0026 OLD)
+ CMAKE_POLICY(SET CMP0045 OLD)
+ CMAKE_POLICY(SET CMP0042 OLD)
 ENDIF()
 
 MESSAGE(STATUS "Running cmake version ${CMAKE_VERSION}")
@@ -102,6 +117,9 @@ IF(CMAKE_BUILD_TYPE MATCHES "Debug" OR WITH_DEBUG)
         "MySQL maintainer-specific development environment")
   ENDIF()
 ENDIF()
+
+OPTION(FORCE_UNSUPPORTED_COMPILER "Disable compiler version checks" ON)
+MARK_AS_ADVANCED(FORCE_UNSUPPORTED_COMPILER)
 
 OPTION(WITH_DEFAULT_COMPILER_OPTIONS
   "Use flags from cmake/build_configurations/compiler_options.cmake"
@@ -185,16 +203,19 @@ INCLUDE(mysql_add_executable)
 # Handle options
 OPTION(DISABLE_SHARED 
  "Don't build shared libraries, compile code as position-dependent" OFF)
+MARK_AS_ADVANCED(DISABLE_SHARED)
 IF(DISABLE_SHARED)
   SET(WITHOUT_DYNAMIC_PLUGINS 1)
 ENDIF()
 OPTION(ENABLED_PROFILING "Enable profiling" ON)
-OPTION(CYBOZU "" OFF)
+SET(WITHOUT_SERVER ON)
 IF(UNIX)
   OPTION(WITH_VALGRIND "Valgrind instrumentation" OFF)
 ENDIF()
+IF(WIN32)
+  OPTION(WITH_MSCRT_DEBUG "MS Visual Studio Debug CRT instrumentation" OFF)
+ENDIF()
 OPTION (WITH_UNIT_TESTS "Compile MySQL with unit tests" OFF)
-MARK_AS_ADVANCED(CYBOZU DISABLE_SHARED)
 
 include(CheckCSourceCompiles)
 include(CheckCXXSourceCompiles)
@@ -228,43 +249,29 @@ MACRO (MY_CHECK_CXX_COMPILER_FLAG FLAG RESULT)
   SET(CMAKE_REQUIRED_FLAGS "${SAVE_CMAKE_REQUIRED_FLAGS}")
 ENDMACRO()
 
-OPTION(WITH_ASAN "Enable address sanitizer" OFF)
-IF (WITH_ASAN)
-  # gcc 4.8.1 and new versions of clang
-  MY_CHECK_C_COMPILER_FLAG("-fsanitize=address" HAVE_C_FSANITIZE)
-  MY_CHECK_CXX_COMPILER_FLAG("-fsanitize=address" HAVE_CXX_FSANITIZE)
-
-  IF(HAVE_C_FSANITIZE AND HAVE_CXX_FSANITIZE)
+MACRO(MY_SANITIZER_CHECK SAN_OPT RESULT)
+  MY_CHECK_C_COMPILER_FLAG("${SAN_OPT}" C_RESULT)
+  MY_CHECK_CXX_COMPILER_FLAG("${SAN_OPT}" CXX_RESULT)
+  IF(C_RESULT AND CXX_RESULT)
     # We switch on basic optimization also for debug builds.
     # With optimization we may get some warnings, so we switch off -Werror
     SET(CMAKE_C_FLAGS_DEBUG
-      "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address -O1 -Wno-error -fPIC")
+      "${CMAKE_C_FLAGS_DEBUG} ${SAN_OPT} -O1 -Wno-error -fPIC")
     SET(CMAKE_C_FLAGS_RELWITHDEBINFO
-      "${CMAKE_C_FLAGS_RELWITHDEBINFO} -fsanitize=address -fPIC")
+      "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${SAN_OPT} -fPIC")
     SET(CMAKE_CXX_FLAGS_DEBUG
-      "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -O1 -Wno-error -fPIC")
+      "${CMAKE_CXX_FLAGS_DEBUG} ${SAN_OPT} -O1 -Wno-error -fPIC")
     SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO
-      "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fsanitize=address -fPIC")
-    SET(WITH_ASAN_OK 1)
+      "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${SAN_OPT} -fPIC")
+    SET(${RESULT} 1)
   ELSE()
-    # older versions of clang
-    MY_CHECK_C_COMPILER_FLAG("-faddress-sanitizer" HAVE_C_FADDRESS)
-    MY_CHECK_CXX_COMPILER_FLAG("-faddress-sanitizer" HAVE_CXX_FFADDRESS)
-
-    IF(HAVE_C_FADDRESS AND HAVE_CXX_FFADDRESS)
-      # We switch on basic optimization also for debug builds.
-      SET(CMAKE_C_FLAGS_DEBUG
-        "${CMAKE_C_FLAGS_DEBUG} -faddress-sanitizer -O1 -fPIC")
-      SET(CMAKE_C_FLAGS_RELWITHDEBINFO
-        "${CMAKE_C_FLAGS_RELWITHDEBINFO} -faddress-sanitizer -fPIC")
-      SET(CMAKE_CXX_FLAGS_DEBUG
-        "${CMAKE_CXX_FLAGS_DEBUG} -faddress-sanitizer -O1 -fPIC")
-      SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO
-        "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -faddress-sanitizer -fPIC")
-      SET(WITH_ASAN_OK 1)
-    ENDIF()
+    SET(${RESULT} 0)
   ENDIF()
+ENDMACRO()
 
+OPTION(WITH_ASAN "Enable address sanitizer" OFF)
+IF(WITH_ASAN)
+  MY_SANITIZER_CHECK("-fsanitize=address" WITH_ASAN_OK)
   IF(WITH_ASAN_OK)
     SET(HAVE_ASAN 1)
   ELSE()
@@ -272,27 +279,21 @@ IF (WITH_ASAN)
   ENDIF()
 ENDIF()
 
-
 OPTION(WITH_MSAN "Enable memory sanitizer" OFF)
 IF(WITH_MSAN)
-  MY_CHECK_C_COMPILER_FLAG("-fsanitize=memory" HAVE_C_FMSANITIZE)
-  MY_CHECK_CXX_COMPILER_FLAG("-fsanitize=memory" HAVE_CXX_FMSANITIZE)
-
-  IF(HAVE_C_FMSANITIZE AND HAVE_CXX_FMSANITIZE)
-    # We switch on basic optimization also for debug builds.
-    # With optimization we may get some warnings, so we switch off -Werror
-    SET(MSAN_FLAGS
-        "-fsanitize=memory -fsanitize-memory-track-origins -O1 -fPIC")
-    SET(CMAKE_C_FLAGS_DEBUG
-      "${CMAKE_C_FLAGS_DEBUG} ${MSAN_FLAGS} -Wno-error")
-    SET(CMAKE_C_FLAGS_RELWITHDEBINFO
-      "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${MSAN_FLAGS}")
-    SET(CMAKE_CXX_FLAGS_DEBUG
-      "${CMAKE_CXX_FLAGS_DEBUG} ${MSAN_FLAGS} -Wno-error")
-    SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO
-      "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${MSAN_FLAGS}")
-  ELSE()
+  MY_SANITIZER_CHECK("-fsanitize=memory -fsanitize-memory-track-origins"
+                     WITH_MSAN_OK)
+  IF(NOT WITH_MSAN_OK)
     MESSAGE(FATAL_ERROR "Do not know how to enable memory sanitizer")
+  ENDIF()
+ENDIF()
+
+OPTION(WITH_UBSAN "Enable undefined behavior sanitizer" OFF)
+IF(WITH_UBSAN)
+  MY_SANITIZER_CHECK("-fsanitize=undefined" WITH_UBSAN_OK)
+  IF(NOT WITH_UBSAN_OK)
+    MESSAGE(FATAL_ERROR
+            "Do not know how to enable undefined behavior sanitizer")
   ENDIF()
 ENDIF()
 
@@ -331,7 +332,7 @@ IF (ENABLE_GPROF AND NOT WIN32 AND NOT APPLE)
 ENDIF()
 
 OPTION(ENABLED_LOCAL_INFILE
- "If we should should enable LOAD DATA LOCAL by default" ${IF_WIN})
+ "If we should enable LOAD DATA LOCAL by default" ${IF_WIN})
 MARK_AS_ADVANCED(ENABLED_LOCAL_INFILE)
 
 OPTION(WITH_FAST_MUTEXES "Compile with fast mutexes" OFF)
@@ -376,16 +377,12 @@ IF(NOT CMAKE_BUILD_TYPE
     AND NOT CMAKE_GENERATOR MATCHES "Xcode") 
     # This is the case of no CMAKE_BUILD_TYPE choosen, typical for VS and Xcode
     # or if custom C flags are set. In VS and Xcode for non-Debug configurations 
-    # DBUG_OFF is already correctly set. Use DBUG_OFF for Makefile based projects 
-    # without build type too, unless user specifically requests DBUG. 
-    IF(NOT CMAKE_C_FLAGS MATCHES "-DDBUG_ON")
-      ADD_DEFINITIONS(-DDBUG_OFF)
-    ENDIF()
+    # DBUG_OFF is already correctly set.
+    ADD_DEFINITIONS(-DDBUG_OFF)
 ENDIF()
 
-# Add safemutex for debug configurations, except on Windows
-# (safemutex has never worked on Windows)
-IF(NOT WIN32 AND NOT WITH_INNODB_MEMCACHED)
+# Add safemutex for debug configurations
+IF(NOT WITH_INNODB_MEMCACHED)
   FOREACH(LANG C CXX)
       SET(CMAKE_${LANG}_FLAGS_DEBUG
           "${CMAKE_${LANG}_FLAGS_DEBUG} -DSAFE_MUTEX")
@@ -429,12 +426,18 @@ ELSE()
   SET(DEFAULT_TMPDIR "\"${TMPDIR}\"")
 ENDIF()
 
+# Boost is not needed to build libmysql (yet)
+#INCLUDE(cmake/boost.cmake)
+
 # Run platform tests
 INCLUDE(configure.cmake)
 
 # Common defines and includes
 ADD_DEFINITIONS(-DHAVE_CONFIG_H)
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
+INCLUDE_DIRECTORIES(
+  ${CMAKE_CURRENT_BINARY_DIR}/include
+  ${CMAKE_SOURCE_DIR}/extra/rapidjson/include
+)
 
 # Add bundled or system zlib.
 MYSQL_CHECK_ZLIB_WITH_COMPRESS()
@@ -446,7 +449,7 @@ MYSQL_CHECK_SSL()
 # not run with the warning options as to not perturb fragile checks
 # (i.e. do not make warnings into errors).
 #
-# Why doesn't these flags affect the entire build?
+# Why don't these flags affect the entire build?
 # Because things may already have been included with ADD_SUBDIRECTORY
 #
 OPTION(MYSQL_MAINTAINER_MODE
@@ -534,12 +537,6 @@ ELSE()
   SET(CPACK_GENERATOR "TGZ")
 ENDIF() 
 ADD_SUBDIRECTORY(packaging/WiX)
-#ADD_SUBDIRECTORY(packaging/solaris)
-
-# Create a single package with "make package"
-# (see http://public.kitware.com/Bug/view.php?id=11452)
-SET(CPACK_MONOLITHIC_INSTALL 1 CACHE INTERNAL "")
-
 
 #
 # RPM installs documentation directly from the source tree

@@ -1,5 +1,4 @@
-/* Copyright (c) 2002, 2014, Oracle and/or its affiliates. All rights
- * reserved.
+/* Copyright (c) 2002, 2014, Oracle and/or its affiliates. All rights reserved.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -498,7 +497,7 @@ static void my_print_result_metadata(MYSQL_RES *result)
    j= field->max_length;
    if (j < 4 && !IS_NOT_NULL(field->flags))
    j= 4;
-   field->max_length= j;
+   field->max_length= (unsigned long)j;
  }
  if (!opt_silent)
  {
@@ -1250,7 +1249,7 @@ static struct my_option client_test_long_options[] =
  &opt_vardir, 0, GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0},
 {"getopt-ll-test", 'g', "Option for testing bug in getopt library",
  &opt_getopt_ll_test, &opt_getopt_ll_test, 0,
- GET_LL, REQUIRED_ARG, 0, 0, LONGLONG_MAX, 0, 0, 0},
+ GET_LL, REQUIRED_ARG, 0, 0, LLONG_MAX, 0, 0, 0},
 {"plugin_dir", 0, "Directory for client-side plugins.",
  &opt_plugin_dir, &opt_plugin_dir, 0,
  GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0},

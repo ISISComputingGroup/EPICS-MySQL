@@ -17,15 +17,11 @@
 #include <my_dir.h>
 #include <m_string.h>
 #include "mysys_err.h"
-#if defined(HAVE_UTIME_H)
+
+#ifndef _WIN32
 #include <utime.h>
-#elif defined(HAVE_SYS_UTIME_H)
-#include <sys/utime.h>
 #else
-struct utimbuf {
-  time_t actime;
-  time_t modtime;
-};
+#include <sys/utime.h>
 #endif
 
 	/*
@@ -90,7 +86,7 @@ int my_copystat(const char *from, const char *to, int MyFlags)
     if (MyFlags & (MY_FAE+MY_WME))
     {
       char errbuf[MYSYS_STRERROR_SIZE];
-      my_error(EE_CHANGE_PERMISSIONS, MYF(ME_BELL+ME_WAITTANG), from,
+      my_error(EE_CHANGE_PERMISSIONS, MYF(0), from,
                errno, my_strerror(errbuf, sizeof(errbuf), errno));
     }
     return -1;
@@ -100,7 +96,7 @@ int my_copystat(const char *from, const char *to, int MyFlags)
   if (statbuf.st_nlink > 1 && MyFlags & MY_LINK_WARNING)
   {
     if (MyFlags & MY_LINK_WARNING)
-      my_error(EE_LINK_WARNING,MYF(ME_BELL+ME_WAITTANG),from,statbuf.st_nlink);
+      my_error(EE_LINK_WARNING,MYF(0),from,statbuf.st_nlink);
   }
   /* Copy ownership */
   if (chown(to, statbuf.st_uid, statbuf.st_gid))
@@ -109,7 +105,7 @@ int my_copystat(const char *from, const char *to, int MyFlags)
     if (MyFlags & (MY_FAE+MY_WME))
     {
       char errbuf[MYSYS_STRERROR_SIZE];
-      my_error(EE_CHANGE_OWNERSHIP, MYF(ME_BELL+ME_WAITTANG), from,
+      my_error(EE_CHANGE_OWNERSHIP, MYF(0), from,
                errno, my_strerror(errbuf, sizeof(errbuf), errno));
     }
     return -1;

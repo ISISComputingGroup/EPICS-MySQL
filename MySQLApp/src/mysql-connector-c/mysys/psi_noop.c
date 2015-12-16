@@ -168,7 +168,8 @@ rebind_table_noop(PSI_table_share *share NNN,
   return NULL;
 }
 
-static void close_table_noop(PSI_table *table NNN)
+static void close_table_noop(struct TABLE_SHARE *share NNN,
+                             PSI_table *table NNN)
 {
   return;
 }
@@ -195,6 +196,11 @@ new_thread_noop(PSI_thread_key key NNN,
 }
 
 static void set_thread_id_noop(PSI_thread *thread NNN, ulonglong id NNN)
+{
+  return;
+}
+
+static void set_thread_THD_noop(PSI_thread *thread NNN, THD *thd NNN)
 {
   return;
 }
@@ -382,7 +388,8 @@ start_table_io_wait_noop(struct PSI_table_locker_state_v1 *state NNN,
   return NULL;
 }
 
-static void end_table_io_wait_noop(PSI_table_locker* locker NNN)
+static void end_table_io_wait_noop(PSI_table_locker* locker NNN,
+                                   ulonglong numrows NNN)
 {
   return;
 }
@@ -448,10 +455,17 @@ static void end_file_close_wait_noop(PSI_file_locker *locker NNN,
   return;
 }
 
-static void start_stage_noop(PSI_stage_key key NNN,
-                             const char *src_file NNN, int src_line NNN)
+static PSI_stage_progress*
+start_stage_noop(PSI_stage_key key NNN,
+                 const char *src_file NNN, int src_line NNN)
 {
-  return;
+  return NULL;
+}
+
+static PSI_stage_progress*
+get_current_stage_progress_noop()
+{
+  return NULL;
 }
 
 static void end_stage_noop(void)
@@ -867,6 +881,7 @@ static PSI PSI_noop=
   spawn_thread_noop,
   new_thread_noop,
   set_thread_id_noop,
+  set_thread_THD_noop,
   get_thread_noop,
   set_thread_user_noop,
   set_thread_user_host_noop,
@@ -907,6 +922,7 @@ static PSI PSI_noop=
   start_file_close_wait_noop,
   end_file_close_wait_noop,
   start_stage_noop,
+  get_current_stage_progress_noop,
   end_stage_noop,
   get_thread_statement_locker_noop,
   refine_statement_noop,

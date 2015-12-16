@@ -1,4 +1,4 @@
-# Copyright (c) 2000, 2013, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2000, 2014, Oracle and/or its affiliates. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -140,9 +140,9 @@
   %else
     %if %(test -f /etc/oracle-release && echo 1 || echo 0)
       %define elver %(rpm -qf --qf '%%{version}\\n' /etc/oracle-release | sed -e 's/^\\([0-9]*\\).*/\\1/g')
-      %if "%elver" == "6"
-        %define distro_description      Oracle Linux 6
-        %define distro_releasetag       el6
+      %if "%elver" == "6" || "%elver" == "7"
+        %define distro_description      Oracle Linux %elver
+        %define distro_releasetag       el%elver
         %define distro_buildreq         gcc-c++ ncurses-devel perl time zlib-devel
         %define distro_requires         chkconfig coreutils grep procps shadow-utils net-tools
       %else
@@ -387,12 +387,14 @@ mkdir debug
   # Attempt to remove any optimisation flags from the debug build
   CFLAGS=`echo " ${CFLAGS} " | \
             sed -e 's/ -O[0-9]* / /' \
+                -e 's/-Wp,-D_FORTIFY_SOURCE=2/ /' \
                 -e 's/ -unroll2 / /' \
                 -e 's/ -ip / /' \
                 -e 's/^ //' \
                 -e 's/ $//'`
   CXXFLAGS=`echo " ${CXXFLAGS} " | \
               sed -e 's/ -O[0-9]* / /' \
+                  -e 's/-Wp,-D_FORTIFY_SOURCE=2/ /' \
                   -e 's/ -unroll2 / /' \
                   -e 's/ -ip / /' \
                   -e 's/^ //' \
@@ -453,8 +455,9 @@ mv -v $RBR/%{_libdir}/*.a $RBR/%{_libdir}/mysql/
 # sub RPM, and then will conflict/overwrite
 # FIXME move to lib/mysql or remove if/when trying to coexist
 # with the server RPM?
-#rm -f $RBR/%{_bindir}/my_print_defaults
-#rm -f $RBR/%{_bindir}/perror
+rm -f $RBR/%{_bindir}/mysql_config
+rm -f $RBR/%{_bindir}/my_print_defaults
+rm -f $RBR/%{_bindir}/perror
 
 # ----------------------------------------------------------------------
 # Clean up the BuildRoot after build is done
@@ -469,9 +472,14 @@ mv -v $RBR/%{_libdir}/*.a $RBR/%{_libdir}/mysql/
 
 %files -n mysql-connector-c-devel%{product_suffix} -f optional-files-devel
 %defattr(-, root, root, 0755)
-%attr(755, root, root) %{_bindir}/mysql_config
-%attr(755, root, root) %{_bindir}/my_print_defaults
-%attr(755, root, root) %{_bindir}/perror
+%doc %{src_dir}/README
+%doc %{src_dir}/Docs/ChangeLog
+%doc %{license_files_server}
+%doc %{src_dir}/Docs/INFO_SRC*
+%doc release/Docs/INFO_BIN*
+#%attr(755, root, root) %{_bindir}/mysql_config
+#%attr(755, root, root) %{_bindir}/my_print_defaults
+#%attr(755, root, root) %{_bindir}/perror
 %dir %attr(755, root, root) %{_includedir}/mysql
 %dir %attr(755, root, root) %{_libdir}/mysql
 %{_includedir}/mysql/*

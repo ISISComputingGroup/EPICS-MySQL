@@ -78,7 +78,7 @@ my_strnxfrm_simple(const CHARSET_INFO *cs,
 {
   const uchar *map= cs->sort_order;
   uchar *d0= dst;
-  uint frmlen;
+  size_t frmlen;
   if ((frmlen= MY_MIN(dstlen, nweights)) > srclen)
     frmlen= srclen;
   if (dst != src)
@@ -94,7 +94,7 @@ my_strnxfrm_simple(const CHARSET_INFO *cs,
       *dst= map[(uchar) *dst];
   }
   return my_strxfrm_pad_desc_and_reverse(cs, d0, dst, d0 + dstlen,
-                                         nweights - frmlen, flags, 0);
+                                         (uint)(nweights - frmlen), flags, 0);
 }
 
 
@@ -293,7 +293,7 @@ size_t my_snprintf_8bit(const CHARSET_INFO *cs  __attribute__((unused)),
 		     const char* fmt, ...)
 {
   va_list args;
-  int result;
+  size_t result;
   va_start(args,fmt);
   result= my_vsnprintf(to, n, fmt, args);
   va_end(args);
@@ -588,16 +588,16 @@ longlong my_strntoll_8bit(const CHARSET_INFO *cs __attribute__((unused)),
 
   if (negative)
   {
-    if (i  > (ulonglong) LONGLONG_MIN)
+    if (i  > (ulonglong) LLONG_MIN)
       overflow = 1;
   }
-  else if (i > (ulonglong) LONGLONG_MAX)
+  else if (i > (ulonglong) LLONG_MAX)
     overflow = 1;
 
   if (overflow)
   {
     err[0]= ERANGE;
-    return negative ? LONGLONG_MIN : LONGLONG_MAX;
+    return negative ? LLONG_MIN : LLONG_MAX;
   }
 
   return (negative ? -((longlong) i) : (longlong) i);
@@ -755,7 +755,7 @@ size_t my_long10_to_str_8bit(const CHARSET_INFO *cs __attribute__((unused)),
   {
     if (val < 0)
     {
-      /* Avoid integer overflow in (-val) for LONGLONG_MIN (BUG#31799). */
+      /* Avoid integer overflow in (-val) for LLONG_MIN (BUG#31799). */
       uval= (unsigned long int)0 - uval;
       *dst++= '-';
       len--;
@@ -795,7 +795,7 @@ size_t my_longlong10_to_str_8bit(const CHARSET_INFO *cs
   {
     if (val < 0)
     {
-      /* Avoid integer overflow in (-val) for LONGLONG_MIN (BUG#31799). */
+      /* Avoid integer overflow in (-val) for LLONG_MIN (BUG#31799). */
       uval = (ulonglong)0 - uval;
       *dst++= '-';
       len--;
@@ -1124,13 +1124,13 @@ skip:
 	if (nmatch > 0)
 	{
 	  match[0].beg= 0;
-	  match[0].end= (size_t) (str- (const uchar*)b-1);
+	  match[0].end= (uint) (str- (const uchar*)b-1);
 	  match[0].mb_len= match[0].end;
 	  
 	  if (nmatch > 1)
 	  {
 	    match[1].beg= match[0].end;
-	    match[1].end= match[0].end+s_length;
+	    match[1].end= match[0].end + (uint)s_length;
 	    match[1].mb_len= match[1].end-match[1].beg;
 	  }
 	}
@@ -1307,8 +1307,8 @@ int my_mb_ctype_8bit(const CHARSET_INFO *cs, int *ctype,
 }
 
 
-#define CUTOFF  (ULONGLONG_MAX / 10)
-#define CUTLIM  (ULONGLONG_MAX % 10)
+#define CUTOFF  (ULLONG_MAX / 10)
+#define CUTLIM  (ULLONG_MAX % 10)
 #define DIGITS_IN_ULONGLONG 20
 
 static ulonglong d10[DIGITS_IN_ULONGLONG]=
@@ -1383,10 +1383,10 @@ static ulonglong d10[DIGITS_IN_ULONGLONG]=
     0	     ok
     ERANGE   If the the value of the converted number is out of range
     In this case the return value is:
-    - ULONGLONG_MAX if unsigned_flag and the number was too big
+    - ULLONG_MAX if unsigned_flag and the number was too big
     - 0 if unsigned_flag and the number was negative
-    - LONGLONG_MAX if no unsigned_flag and the number is too big
-    - LONGLONG_MIN if no unsigned_flag and the number it too big negative
+    - LLONG_MAX if no unsigned_flag and the number is too big
+    - LLONG_MIN if no unsigned_flag and the number it too big negative
     
     EDOM If the string didn't contain any digits.
     In this case the return value is 0.
@@ -1446,7 +1446,7 @@ my_strntoull10rnd_8bit(const CHARSET_INFO *cs __attribute__((unused)),
     }
   }
   
-  digits= str - beg;
+  digits= (int)(str - beg);
 
   /* Continue to accumulate into ulonglong */
   for (dot= NULL, ull= ul; str < end; str++)
@@ -1466,7 +1466,7 @@ my_strntoull10rnd_8bit(const CHARSET_INFO *cs __attribute__((unused)),
       */
       if (ull == CUTOFF)
       {
-        ull= ULONGLONG_MAX;
+        ull= ULLONG_MAX;
         addon= 1;
         str++;
       }
@@ -1483,7 +1483,7 @@ my_strntoull10rnd_8bit(const CHARSET_INFO *cs __attribute__((unused)),
       }
       else
       {
-        shift= dot - str;
+        shift= (int)(dot - str);
         for ( ; str < end && (ch= (uchar) (*str - '0')) < 10; str++);
       }
       goto exp;
@@ -1507,7 +1507,7 @@ my_strntoull10rnd_8bit(const CHARSET_INFO *cs __attribute__((unused)),
     /* Unknown character, exit the loop */
     break; 
   }
-  shift= dot ? dot - str : 0; /* Right shift */
+  shift= dot ? (int)(dot - str) : 0; /* Right shift */
   addon= 0;
 
 exp:    /* [ E [ <sign> ] <unsigned integer> ] */
@@ -1543,7 +1543,7 @@ exp:    /* [ E [ <sign> ] <unsigned integer> ] */
   {
     if (addon)
     {
-      if (ull == ULONGLONG_MAX)
+      if (ull == ULLONG_MAX)
         goto ret_too_big;
       ull++;
     }
@@ -1585,20 +1585,20 @@ ret_sign:
   {
     if (negative)
     {
-      if (ull > (ulonglong) LONGLONG_MIN)
+      if (ull > (ulonglong) LLONG_MIN)
       {
         *error= MY_ERRNO_ERANGE;
-        return (ulonglong) LONGLONG_MIN;
+        return (ulonglong) LLONG_MIN;
       }
       *error= 0;
       return (ulonglong) -(longlong) ull;
     }
     else
     {
-      if (ull > (ulonglong) LONGLONG_MAX)
+      if (ull > (ulonglong) LLONG_MAX)
       {
         *error= MY_ERRNO_ERANGE;
-        return (ulonglong) LONGLONG_MAX;
+        return (ulonglong) LLONG_MAX;
       }
       *error= 0;
       return ull;
@@ -1628,8 +1628,8 @@ ret_too_big:
   *endptr= (char*) str;
   *error= MY_ERRNO_ERANGE;
   return unsigned_flag ?
-         ULONGLONG_MAX :
-         negative ? (ulonglong) LONGLONG_MIN : (ulonglong) LONGLONG_MAX;
+         ULLONG_MAX :
+         negative ? (ulonglong) LLONG_MIN : (ulonglong) LLONG_MAX;
 }
 
 
@@ -1818,7 +1818,7 @@ my_strxfrm_pad_desc_and_reverse(const CHARSET_INFO *cs,
   my_strxfrm_desc_and_reverse(str, frmend, flags, level);
   if ((flags & MY_STRXFRM_PAD_TO_MAXLEN) && frmend < strend)
   {
-    uint fill_length= strend - frmend;
+    size_t fill_length= strend - frmend;
     cs->cset->fill(cs, (char*) frmend, fill_length, cs->pad_char);
     frmend= strend;
   }

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2008, 2011, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008, 2015, Oracle and/or its affiliates. All rights reserved.
 #
 # The MySQL Connector/C++ is licensed under the terms of the GPLv2
 # <http://www.gnu.org/licenses/old-licenses/gpl-2.0.html>, like most
@@ -53,7 +53,8 @@ CHECK_FUNCTION_EXISTS(strtoimax HAVE_FUNCTION_STRTOIMAX)
 CHECK_FUNCTION_EXISTS(strtoumax HAVE_FUNCTION_STRTOUMAX)
 
 
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cm ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cm
+               ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 
 SET(MYSQLCPPCONN_INSTALL_HEADERS
@@ -70,6 +71,8 @@ SET(MYSQLCPPCONN_INSTALL_HEADERS
 		resultset_metadata.h
 		statement.h
 		sqlstring.h
-		warning.h)
+		warning.h
+		${CMAKE_CURRENT_BINARY_DIR}/version_info.h
+		variant.h)
 
 INSTALL(FILES ${MYSQLCPPCONN_INSTALL_HEADERS} DESTINATION include/cppconn)

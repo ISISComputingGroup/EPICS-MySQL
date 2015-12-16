@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2008, 2014, Oracle and/or its affiliates. All rights reserved.
+  Copyright (c) 2008, 2015, Oracle and/or its affiliates. All rights reserved.
 
   The MySQL Connector/C++ is licensed under the terms of the GPLv2
   <http://www.gnu.org/licenses/old-licenses/gpl-2.0.html>, like most
@@ -22,7 +22,57 @@
   51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-GA  1.1.4 - 
+GA  1.1.6 -
+- C/C++ won't build against Boost-devel-1.41.0-25.EL6.I686 (Bug#20125824)
+- Make install fail for out of source build (Bug#19447498)
+- Segmentation fault in retrieval of value using getter methods when 
+  defaultstatementresulttype=forward_only and row position is after last row.
+  (Bug#20085944)
+- C/C++ should provide libmysqlclient and boost version macros with which
+  it is build. (Bug#75250)
+- C++11 support and replace deprecated auto_ptr. (Bug#75251)
+- wasNull() method call before fetching the data results in assert failure
+  (Bug#19938873)
+- Memory leak if result set of prepared statement used (Bug#18135088/wl#7925)
+- ResultSet::getString does not return fractional seconds from DATETIME(N)
+  columns (Bug#68523)
+- make install/fast fails if static library is not built (Bug#52281)
+- MySQL_ResultSet::getString() returns bad value for BIT data (Bug#66235)
+
+GA  1.1.5 -
+- DatabaseMetaData::getProcedures() returns syntax error for connection option
+  metadatauseinfoschema=false (Bug#19505421)
+- DatabaseMetaData::getColumns() returns empty resultset when
+  metadataUseInfoSchema is true and for no schema. (Bug#19147897)
+- ResultSetMetaData::getColumnName() returns display name instead of actual
+  column name. (Bug#19244736)
+- ResultSetMetaData::getTables() not returning result for VIEW when
+  metadatauseinfoschema=false. (Bug#19505348)
+- Version macros missing from installed headers file. (Bug#19553971)
+- Getting multiple resultset from procedure using prepared statement gives
+  error (Bug#19147677).
+- Connection losses are not detected while fetching resultset using next()
+  (Bug#18886278/69031).
+- Remove boost variant from API (wl#7030)
+- Make close() method or destructor of Connection object to always close
+  the connection with server (wl#7028)
+- Added max_statement_timeout and other connect options (MYSQL_DEFAULT_AUTH,
+  MYSQL_PLUGIN_DIR, MYSQL_SET_CHARSET_DIR, MYSQL_READ_DEFAULT_FILE,
+  MYSQL_READ_DEFAULT_GROUP, MYSQL_OPT_CONNECT_ATTR_DELETE,
+  MYSQL_OPT_CONNECT_ATTR_RESET, MYSQL_OPT_LOCAL_INFILE) (Bug#19479950)
+- Added missing sort order for DatabaseMetaData::getImportedKeys() and
+  DatabaseMetaData::getIndexInfo() for no_i_s case. (Bug#19505248)
+- There is no reconnection function in Connector/C++ (Bug#14207722)
+- WB sends unnecessary COM_PING operations. (Bug#17186530)
+- Double free or corruption error due to global extern string variable localhost 
+  referenced at more then one places (Bug#19910311)
+- Assertion failure in getClientOption when the provided option is not set
+  (Bug#19938922)
+- Memory leak while adding parameter OPT_CONNECT_ATTR_ADD to options list
+  (Bug#19938970)
+- CMake picking up libmysqlclient from system path (Bug#19940663)
+
+GA  1.1.4 -
 - Both static and dynamic driver libraries are now linked statically against
   libmysql library
 - Cannot Connect error when using legacy authentication. (Bug#16970753/69492)
@@ -37,7 +87,7 @@ GA  1.1.4 -
   fields. (Bug#18803414/72700)
 - Missing collation info in the column metadata methods for a result.
   (Bug#18803345/72698)
-- Added connection option "rsaKey" to specify RSA public key path name 
+- Added connection option "rsaKey" to specify RSA public key path name
   (wl#7972).
 
 - Built against libmysql 5.6.
@@ -80,14 +130,14 @@ GA  1.1.1 - 2012-08-06
 
 - Added new method ResultSetMetaData::isNumeric() and implemented it in
   all classes that subclass from it. (Andrey)
-  
+
 - Fixed the bug causing compilation errors in Microsoft Visual Studio 2010 if
   stdint.h was included. See http://bugs.mysql.com/bug.php?id=60307
 
 - Fixed bug making statement that did not raise any warning to return
   warnings from previously executed statement.
 
-- Fixed stores(Lower|Mixed)Case(Quoted)Identifiers methods. 
+- Fixed stores(Lower|Mixed)Case(Quoted)Identifiers methods.
 
 - Built against libmysql 5.5.27 enabling support of authentification plugins
   and IPv6.

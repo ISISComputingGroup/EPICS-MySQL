@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2008, 2013, Oracle and/or its affiliates. All rights reserved.
+Copyright (c) 2008, 2014, Oracle and/or its affiliates. All rights reserved.
 
 The MySQL Connector/C++ is licensed under the terms of the GPLv2
 <http://www.gnu.org/licenses/old-licenses/gpl-2.0.html>, like most
@@ -102,6 +102,8 @@ public:
 
 	void getClientOption(const sql::SQLString & optionName, void * optionValue);
 
+	sql::SQLString getClientOption(const sql::SQLString & optionName);
+
 	sql::DatabaseMetaData * getMetaData();
 
 	enum_transaction_isolation getTransactionIsolation();
@@ -111,6 +113,10 @@ public:
 	bool isClosed();
 
 	bool isReadOnly();
+
+	bool isValid();
+
+	bool reconnect();
 
 	sql::SQLString nativeSQL(const sql::SQLString& sql);
 
@@ -140,6 +146,8 @@ public:
 
 	sql::Connection * setClientOption(const sql::SQLString & optionName, const void * optionValue);
 
+	sql::Connection * setClientOption(const sql::SQLString & optionName, const sql::SQLString & optionValue);
+
 	void setHoldability(int holdability);
 
 	void setReadOnly(bool readOnly);
@@ -153,6 +161,8 @@ public:
 	virtual sql::SQLString getSessionVariable(const sql::SQLString & varname);
 
 	virtual void setSessionVariable(const sql::SQLString & varname, const sql::SQLString & value);
+
+	virtual void setSessionVariable(const sql::SQLString & varname, unsigned int value);
 
 	virtual sql::SQLString getLastStatementInfo();
 
@@ -168,7 +178,7 @@ private:
 	   a good idea to move it to a separate helper class */
 	boost::scoped_ptr< ::sql::mysql::MySQL_Statement > service;
 
-	MySQL_ConnectionData * intern; /* pimpl */
+	boost::scoped_ptr< ::sql::mysql::MySQL_ConnectionData > intern; /* pimpl */
 
 	/* Prevent use of these */
 	MySQL_Connection(const MySQL_Connection &);

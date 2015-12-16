@@ -26,9 +26,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include <stdlib.h>
 #include <string>
+#include <sstream>
 
 #include <memory>
 #include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 #include <cppconn/exception.h>
 #include "mysql_util.h"
 #include "mysql_connection.h"
@@ -1428,7 +1430,7 @@ MySQL_ConnectionMetaData::getSchemaObjects(const sql::SQLString& /* catalogName 
 	rs_field_data.push_back("NAME");
 	rs_field_data.push_back("DDL");
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	while (native_rs->next()) {
 		MySQL_ArtResultSet::row_t rs_data_row;
@@ -1543,9 +1545,7 @@ MySQL_ConnectionMetaData::getSchemaObjects(const sql::SQLString& /* catalogName 
 		rs_data->push_back(rs_data_row);
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -1556,7 +1556,7 @@ sql::ResultSet *
 MySQL_ConnectionMetaData::getSchemaObjectTypes()
 {
 	CPP_ENTER("MySQL_ConnectionMetaData::getSchemaObjectTypes");
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	std::list<sql::SQLString> rs_field_data;
 	rs_field_data.push_back("OBJECT_TYPE");
@@ -1582,9 +1582,7 @@ MySQL_ConnectionMetaData::getSchemaObjectTypes()
 		rs_data->push_back(rs_data_row);
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -1656,7 +1654,7 @@ MySQL_ConnectionMetaData::getAttributes(const sql::SQLString& /*catalog*/, const
 										const sql::SQLString& /*typeNamePattern*/, const sql::SQLString& /*attributeNamePattern*/)
 {
 	CPP_ENTER("MySQL_ConnectionMetaData::getAttributes");
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	std::list<sql::SQLString> rs_field_data;
 
@@ -1682,9 +1680,7 @@ MySQL_ConnectionMetaData::getAttributes(const sql::SQLString& /*catalog*/, const
 	rs_field_data.push_back("SCOPE_TABLE");
 	rs_field_data.push_back("SOURCE_DATA_TYPE");
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -1696,7 +1692,7 @@ MySQL_ConnectionMetaData::getBestRowIdentifier(const sql::SQLString& catalog, co
 												const sql::SQLString& table, int /* scope */, bool /* nullable */)
 {
 	CPP_ENTER("MySQL_ConnectionMetaData::getBestRowIdentifier");
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	std::list<sql::SQLString> rs_field_data;
 	rs_field_data.push_back("SCOPE");
@@ -1732,9 +1728,7 @@ MySQL_ConnectionMetaData::getBestRowIdentifier(const sql::SQLString& catalog, co
 		}
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -1744,7 +1738,7 @@ MySQL_ConnectionMetaData::getBestRowIdentifier(const sql::SQLString& catalog, co
 sql::ResultSet *
 MySQL_ConnectionMetaData::getCatalogs()
 {
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	std::list<sql::SQLString> rs_field_data;
 
@@ -1756,9 +1750,7 @@ MySQL_ConnectionMetaData::getCatalogs()
 		rs_data->push_back(rs_data_row);
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -1807,13 +1799,15 @@ MySQL_ConnectionMetaData::getColumnPrivileges(const sql::SQLString& /*catalog*/,
 	rs_field_data.push_back("PRIVILEGE");
 	rs_field_data.push_back("IS_GRANTABLE");
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+
+	connection->getClientOption("metadataUseInfoSchema", (void *) &use_info_schema);
 
 	/* I_S seems currently (20080220) not to work */
 	if (use_info_schema && server_version > 69999) {
 #if A0
 		sql::SQLString query("SELECT TABLE_CATALOG AS TABLE_CAT, TABLE_SCHEMA AS TABLE_SCHEM, TABLE_NAME,"
-				 		"COLUMN_NAME, NULL AS GRANTOR, GRANTEE, PRIVILEGE_TYPE AS PRIVILEGE, IS_GRANTABLE\n"
+						"COLUMN_NAME, NULL AS GRANTOR, GRANTEE, PRIVILEGE_TYPE AS PRIVILEGE, IS_GRANTABLE\n"
 						"FROM INFORMATION_SCHEMA.COLUMN_PRIVILEGES\n"
 						"WHERE TABLE_SCHEMA LIKE ? AND TABLE_NAME=? AND COLUMN_NAME LIKE ?\n"
 						"ORDER BY COLUMN_NAME, PRIVILEGE_TYPE");
@@ -1882,9 +1876,7 @@ MySQL_ConnectionMetaData::getColumnPrivileges(const sql::SQLString& /*catalog*/,
 		}
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -1901,7 +1893,7 @@ MySQL_ConnectionMetaData::getColumns(const sql::SQLString& /*catalog*/, const sq
 	sql::SQLString escapedTableNamePattern = connection->escapeString(tableNamePattern);
 	sql::SQLString escapedColumnNamePattern = connection->escapeString(columnNamePattern);
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	std::list<sql::SQLString> rs_field_data;
 
@@ -1929,6 +1921,8 @@ MySQL_ConnectionMetaData::getColumns(const sql::SQLString& /*catalog*/, const sq
 	rs_field_data.push_back("SCOPE_TABLE");
 	rs_field_data.push_back("SOURCE_DATA_TYPE");
 	rs_field_data.push_back("IS_AUTOINCREMENT");
+
+	connection->getClientOption("metadataUseInfoSchema", (void *) &use_info_schema);
 
 	if (use_info_schema && server_version > 50020) {
 		char buf[5];
@@ -1977,14 +1971,25 @@ MySQL_ConnectionMetaData::getColumns(const sql::SQLString& /*catalog*/, const sq
 			"NULL AS SCOPE_TABLE,"
 			"NULL AS SOURCE_DATA_TYPE,"
 			"IF (EXTRA LIKE '%auto_increment%','YES','NO') AS IS_AUTOINCREMENT "
-			"FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA LIKE ? AND TABLE_NAME LIKE ? AND COLUMN_NAME LIKE ? "
+			"FROM INFORMATION_SCHEMA.COLUMNS WHERE ");
+		if (schemaPattern.length()) {
+			query.append(" TABLE_SCHEMA LIKE ? ");
+		} else {
+			query.append(" TABLE_SCHEMA = DATABASE() ");
+		}
+		query.append("AND TABLE_NAME LIKE ? AND COLUMN_NAME LIKE ? "
 			"ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION");
 
 		boost::scoped_ptr< sql::PreparedStatement > pStmt(connection->prepareStatement(query));
 
-		pStmt->setString(1, escapedSchemaPattern);
-		pStmt->setString(2, escapedTableNamePattern);
-		pStmt->setString(3, escapedColumnNamePattern);
+		if (schemaPattern.length()) {
+			pStmt->setString(1, escapedSchemaPattern);
+			pStmt->setString(2, escapedTableNamePattern);
+			pStmt->setString(3, escapedColumnNamePattern);
+		} else {
+			pStmt->setString(1, escapedTableNamePattern);
+			pStmt->setString(2, escapedColumnNamePattern);
+		}
 
 		boost::scoped_ptr< sql::ResultSet > rs(pStmt->executeQuery());
 
@@ -2091,9 +2096,7 @@ MySQL_ConnectionMetaData::getColumns(const sql::SQLString& /*catalog*/, const sq
 		}
 
 	}
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -2120,7 +2123,7 @@ MySQL_ConnectionMetaData::getCrossReference(const sql::SQLString& primaryCatalog
 				primaryCatalog.c_str(), foreignCatalog.c_str(), primarySchema.c_str(), foreignSchema.c_str(),
 				primaryTable.c_str(), foreignTable.c_str());
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	std::list<sql::SQLString> rs_field_data;
 	rs_field_data.push_back("PKTABLE_CAT");
@@ -2137,6 +2140,8 @@ MySQL_ConnectionMetaData::getCrossReference(const sql::SQLString& primaryCatalog
 	rs_field_data.push_back("FK_NAME");
 	rs_field_data.push_back("PK_NAME");
 	rs_field_data.push_back("DEFERRABILITY");
+
+	connection->getClientOption("metadataUseInfoSchema", (void *) &use_info_schema);
 
 	/* Not sure which version, let it not be 5.1.0, just something above which is anyway not used anymore */
 	if (use_info_schema && server_version >= 50110) {
@@ -2222,9 +2227,7 @@ MySQL_ConnectionMetaData::getCrossReference(const sql::SQLString& primaryCatalog
 
 			rs_data->push_back(rs_data_row);
 		}
-		MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-		// If there is no exception we can release otherwise on function exit memory will be freed
-		rs_data.release();
+		MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 		return ret;
 	} else {
 		throw sql::MethodNotImplementedException("MySQL_ConnectionMetaData::getCrossReference");
@@ -2355,7 +2358,7 @@ MySQL_ConnectionMetaData::getExportedKeys(const sql::SQLString& catalog, const s
 {
 	CPP_ENTER("MySQL_ConnectionMetaData::getExportedKeys");
 	CPP_INFO_FMT("catalog=%s schema=%s table=%s", catalog.c_str(), schema.c_str(), table.c_str());
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	std::list<sql::SQLString> rs_field_data;
 	rs_field_data.push_back("PKTABLE_CAT");
@@ -2372,6 +2375,8 @@ MySQL_ConnectionMetaData::getExportedKeys(const sql::SQLString& catalog, const s
 	rs_field_data.push_back("FK_NAME");
 	rs_field_data.push_back("PK_NAME");
 	rs_field_data.push_back("DEFERRABILITY");
+
+	connection->getClientOption("metadataUseInfoSchema", (void *) &use_info_schema);
 
 	/* Not sure which version, let it not be 5.1.0, just something above which is anyway not used anymore */
 	if (use_info_schema && server_version >= 50110) {
@@ -2454,9 +2459,7 @@ MySQL_ConnectionMetaData::getExportedKeys(const sql::SQLString& catalog, const s
 
 			rs_data->push_back(rs_data_row);
 		}
-		MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-		// If there is no exception we can release otherwise on function exit memory will be freed
-		rs_data.release();
+		MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 		return ret;
 	} else {
 		throw sql::MethodNotImplementedException("MySQL_ConnectionMetaData::getExportedKeys");
@@ -2625,13 +2628,23 @@ MySQL_ConnectionMetaData::parseImportedKeys(
 /* }}} */
 
 
+/* ORDER BY PKTABLE_SCHEM, PKTABLE_NAME, KEY_SEQ 1,2,8 */
+bool compareImportedKeys(std::vector< MyVal > &first, std::vector< MyVal > &second)
+{
+	return (first[1].getString().compare(second[1].getString()) < 0) ||
+           ((first[1].getString().compare(second[1].getString()) == 0) && (first[2].getString().compare(second[2].getString()) < 0)) ||
+           ((first[1].getString().compare(second[1].getString()) == 0) && (first[2].getString().compare(second[2].getString()) == 0) &&
+            (first[8].getString().caseCompare(second[8].getString()) < 0 ));
+}
+
+
 /* {{{ MySQL_ConnectionMetaData::getImportedKeys() -I- */
 sql::ResultSet *
 MySQL_ConnectionMetaData::getImportedKeys(const sql::SQLString& catalog, const sql::SQLString& schema, const sql::SQLString& table)
 {
 	CPP_ENTER("MySQL_ConnectionMetaData::getImportedKeys");
 	CPP_INFO_FMT("catalog=%s schema=%s table=%s", catalog.c_str(), schema.c_str(), table.c_str());
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 
 	std::list<sql::SQLString> rs_field_data;
@@ -2649,6 +2662,8 @@ MySQL_ConnectionMetaData::getImportedKeys(const sql::SQLString& catalog, const s
 	rs_field_data.push_back("FK_NAME");
 	rs_field_data.push_back("PK_NAME");
 	rs_field_data.push_back("DEFERRABILITY");
+
+	connection->getClientOption("metadataUseInfoSchema", (void *) &use_info_schema);
 
 	if (use_info_schema && server_version >= 50116) {
 		/* This just doesn't work */
@@ -2789,21 +2804,33 @@ MySQL_ConnectionMetaData::getImportedKeys(const sql::SQLString& catalog, const s
 
 					rs_data_row.push_back(constraint_name);		// FK_NAME
 					// ToDo: Should it really be PRIMARY?
-					rs_data_row.push_back("");					// PK_NAME
+					rs_data_row.push_back("PRIMARY");					// PK_NAME
 					rs_data_row.push_back((int64_t) importedKeyNotDeferrable);	// DEFERRABILITY
 
 					rs_data->push_back(rs_data_row);
 				}
 			}
 		}
+		rs_data.get()->sort(compareImportedKeys);
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
+
+
+/* ORDER BY NON_UNIQUE, TYPE, INDEX_NAME, ORDINAL_POSITION */
+bool compareIndexInfo(std::vector< MyVal > &first, std::vector< MyVal > &second)
+{
+	return (first[3].getBool() < second[3].getBool()) ||
+           ((first[3].getBool() == second[3].getBool()) && (first[6].getString().compare(second[6].getString()) < 0)) ||
+           ((first[3].getBool() == second[3].getBool()) && (first[6].getString().compare(second[6].getString()) == 0) &&
+            (first[5].getString().caseCompare(second[5].getString()) < 0 )) ||
+           ((first[3].getBool() == second[3].getBool()) && (first[6].getString().compare(second[6].getString()) == 0) &&
+            (first[5].getString().caseCompare(second[5].getString()) == 0 ) &&
+			(first[7].getString().caseCompare(second[7].getString()) < 0 ));
+}
 
 
 /* {{{ MySQL_ConnectionMetaData::getIndexInfo() -I- */
@@ -2812,7 +2839,7 @@ MySQL_ConnectionMetaData::getIndexInfo(const sql::SQLString& /*catalog*/, const 
 										const sql::SQLString& table, bool unique, bool /* approximate */)
 {
 	CPP_ENTER("MySQL_ConnectionMetaData::getIndexInfo");
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 
 	std::list<sql::SQLString> rs_field_data;
@@ -2831,13 +2858,14 @@ MySQL_ConnectionMetaData::getIndexInfo(const sql::SQLString& /*catalog*/, const 
 	rs_field_data.push_back("FILTER_CONDITION");
 
 	char indexOther[5];
+	char indexHash[5];
 
 	snprintf(indexOther, sizeof(indexOther), "%d", DatabaseMetaData::tableIndexOther);
+	snprintf(indexHash, sizeof(indexHash), "%d", DatabaseMetaData::tableIndexHashed);
+
+	connection->getClientOption("metadataUseInfoSchema", (void *) &use_info_schema);
 
 	if (use_info_schema && server_version > 50020) {
-		char indexHash[5];
-		snprintf(indexHash, sizeof(indexHash), "%d", DatabaseMetaData::tableIndexHashed);
-
 		sql::SQLString query("SELECT TABLE_CATALOG AS TABLE_CAT, TABLE_SCHEMA AS TABLE_SCHEM, TABLE_NAME, NON_UNIQUE, "
 						 "TABLE_SCHEMA AS INDEX_QUALIFIER, INDEX_NAME, CASE WHEN INDEX_TYPE='HASH' THEN ");
 		query.append(indexHash).append(" ELSE ").append(indexOther);
@@ -2888,6 +2916,14 @@ MySQL_ConnectionMetaData::getIndexInfo(const sql::SQLString& /*catalog*/, const 
 		}
 
 		while (rs.get() && rs->next()) {
+		unsigned int row_unique;
+		std::istringstream buffer(rs->getString("Non_unique"));
+		buffer >> row_unique;
+		if (!(buffer.rdstate() & std::istringstream::failbit)
+				&& unique && row_unique != 0){
+			continue;
+		}
+
 			MySQL_ArtResultSet::row_t rs_data_row;
 
 			rs_data_row.push_back("def");							// TABLE_CAT
@@ -2896,7 +2932,11 @@ MySQL_ConnectionMetaData::getIndexInfo(const sql::SQLString& /*catalog*/, const 
 			rs_data_row.push_back(atoi(rs->getString("Non_unique").c_str())? true:false);	// NON_UNIQUE
 			rs_data_row.push_back(schema);							// INDEX_QUALIFIER
 			rs_data_row.push_back(rs->getString("Key_name"));		// INDEX_NAME
-			rs_data_row.push_back((const char *) indexOther);				// TYPE
+			if (!rs->getString("Index_type").compare("HASH")) {
+				rs_data_row.push_back((const char *) indexHash);	// TYPE
+			} else {
+				rs_data_row.push_back((const char *) indexOther);	// TYPE
+			}
 			rs_data_row.push_back(rs->getString("Seq_in_index"));	// ORDINAL_POSITION
 			rs_data_row.push_back(rs->getString("Column_name"));	// COLUMN_NAME
 			rs_data_row.push_back(rs->getString("Collation"));		// ASC_OR_DESC
@@ -2906,11 +2946,10 @@ MySQL_ConnectionMetaData::getIndexInfo(const sql::SQLString& /*catalog*/, const 
 
 			rs_data->push_back(rs_data_row);
 		}
+		rs_data.get()->sort(compareIndexInfo);
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -3165,7 +3204,9 @@ MySQL_ConnectionMetaData::getPrimaryKeys(const sql::SQLString& catalog, const sq
 	rs_field_data.push_back("PK_NAME");
 
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+
+	connection->getClientOption("metadataUseInfoSchema", (void *) &use_info_schema);
 
 	/* Bind Problems with 49999, check later why */
 	if (use_info_schema && server_version > 49999) {
@@ -3221,9 +3262,7 @@ MySQL_ConnectionMetaData::getPrimaryKeys(const sql::SQLString& catalog, const sq
 		}
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -3244,7 +3283,9 @@ MySQL_ConnectionMetaData::getUniqueNonNullableKeys(const sql::SQLString& catalog
 	rs_field_data.push_back("PK_NAME");
 
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+
+	connection->getClientOption("metadataUseInfoSchema", (void *) &use_info_schema);
 
 	/* Bind Problems with 49999, check later why */
 	if (use_info_schema && server_version > 50002) {
@@ -3307,9 +3348,7 @@ MySQL_ConnectionMetaData::getUniqueNonNullableKeys(const sql::SQLString& catalog
 		}
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -3340,11 +3379,9 @@ MySQL_ConnectionMetaData::getProcedureColumns(const sql::SQLString& /* catalog *
 	rs_field_data.push_back("NULLABLE");
 	rs_field_data.push_back("REMARKS");
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 #endif
 }
@@ -3370,7 +3407,7 @@ MySQL_ConnectionMetaData::getProcedures(const sql::SQLString& /*catalog*/, const
 	rs_field_data.push_back("REMARKS");
 	rs_field_data.push_back("PROCEDURE_TYPE");
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	char procRetNoRes[5];
 	my_i_to_a(procRetNoRes, sizeof(procRetNoRes) - 1, procedureNoResult);
@@ -3378,6 +3415,8 @@ MySQL_ConnectionMetaData::getProcedures(const sql::SQLString& /*catalog*/, const
 	my_i_to_a(procRetRes, sizeof(procRetRes) - 1, procedureReturnsResult);
 	char procRetUnknown[5];
 	my_i_to_a(procRetUnknown, sizeof(procRetUnknown) - 1, procedureResultUnknown);
+
+	connection->getClientOption("metadataUseInfoSchema", (void *) &use_info_schema);
 
 	if (use_info_schema && server_version > 49999) {
 		sql::SQLString query("SELECT ROUTINE_CATALOG AS PROCEDURE_CAT, ROUTINE_SCHEMA AS PROCEDURE_SCHEM, "
@@ -3418,9 +3457,9 @@ MySQL_ConnectionMetaData::getProcedures(const sql::SQLString& /*catalog*/, const
 			sql::SQLString query("SELECT 'def' AS PROCEDURE_CAT, db as PROCEDURE_SCHEM, "
 									"name AS PROCEDURE_NAME, NULL as RESERVERD_1, NULL as RESERVERD_2, "
 									"NULL AS RESERVERD_3, comment as REMARKS, ");
-			query.append("CASE WHEN TYPE=='FUNCTION' THEN ").append(procRetRes).append("\n");
-			query.append("WHEN TYPE='PROCEDURE' THEN").append(procRetNoRes).append("ELSE ").append(procRetUnknown);
-			query.append("\n END AS PROCEDURE_TYPE\nFROM mysql.proc WHERE name LIKE ? AND db <=> ? ORDER BY name");
+			query.append(" CASE WHEN TYPE='FUNCTION' THEN ").append(procRetRes);
+			query.append(" WHEN TYPE='PROCEDURE' THEN ").append(procRetNoRes).append(" ELSE ").append(procRetUnknown);
+			query.append(" END AS PROCEDURE_TYPE FROM mysql.proc WHERE name LIKE ? AND db <=> ? ORDER BY name");
 
 			boost::scoped_ptr< sql::PreparedStatement > pStmt(connection->prepareStatement(query));
 			pStmt->setString(1, escapedProcedureNamePattern);
@@ -3471,9 +3510,7 @@ MySQL_ConnectionMetaData::getProcedures(const sql::SQLString& /*catalog*/, const
 
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -3505,12 +3542,13 @@ sql::ResultSet *
 MySQL_ConnectionMetaData::getSchemas()
 {
 	CPP_ENTER("MySQL_ConnectionMetaData::getSchemas");
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 
 	std::list<sql::SQLString> rs_field_data;
 	rs_field_data.push_back("TABLE_SCHEM");
 	rs_field_data.push_back("TABLE_CATALOG");
+	connection->getClientOption("metadataUseInfoSchema", (void *) &use_info_schema);
 
 	boost::scoped_ptr< sql::ResultSet > rs(
 		stmt->executeQuery(use_info_schema && server_version > 49999?
@@ -3530,9 +3568,7 @@ MySQL_ConnectionMetaData::getSchemas()
 		rs_data->push_back(rs_data_row);
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -3559,7 +3595,7 @@ MySQL_ConnectionMetaData::getSchemaCollation(const sql::SQLString& /* catalog */
 
 	sql::SQLString escapedSchemaPattern = connection->escapeString(schemaPattern);
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	std::list<sql::SQLString> rs_field_data;
 	rs_field_data.push_back("SCHEMA_CAT");
@@ -3582,9 +3618,7 @@ MySQL_ConnectionMetaData::getSchemaCollation(const sql::SQLString& /* catalog */
 
 		rs_data->push_back(rs_data_row);
 	}
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -3600,7 +3634,7 @@ MySQL_ConnectionMetaData::getSchemaCharset(const sql::SQLString& /* catalog */,
 
 	sql::SQLString escapedSchemaPattern = connection->escapeString(schemaPattern);
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	std::list<sql::SQLString> rs_field_data;
 	rs_field_data.push_back("SCHEMA_CAT");
@@ -3623,9 +3657,7 @@ MySQL_ConnectionMetaData::getSchemaCharset(const sql::SQLString& /* catalog */,
 
 		rs_data->push_back(rs_data_row);
 	}
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -3737,11 +3769,9 @@ MySQL_ConnectionMetaData::getSuperTables(const sql::SQLString& /*catalog*/, cons
 	rs_field_data.push_back("TABLE_NAME");
 	rs_field_data.push_back("SUPERTABLE_NAME");
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -3761,11 +3791,9 @@ MySQL_ConnectionMetaData::getSuperTypes(const sql::SQLString& /*catalog*/, const
 	rs_field_data.push_back("SUPERTYPE_SCHEM");
 	rs_field_data.push_back("SUPERTYPE_NAME");
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -3858,7 +3886,7 @@ MySQL_ConnectionMetaData::getTablePrivileges(const sql::SQLString& catalog, cons
 	rs_field_data.push_back("PRIVILEGE");
 	rs_field_data.push_back("IS_GRANTABLE");
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 
 	std::list< sql::SQLString > tableTypes;
@@ -3911,9 +3939,7 @@ MySQL_ConnectionMetaData::getTablePrivileges(const sql::SQLString& catalog, cons
 		}
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -3930,7 +3956,7 @@ MySQL_ConnectionMetaData::getTables(const sql::SQLString& /* catalog */, const s
 	sql::SQLString escapedSchemaPattern = connection->escapeString(schemaPattern);
 	sql::SQLString escapedTableNamePattern = connection->escapeString(tableNamePattern);
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	std::list<sql::SQLString> rs_field_data;
 	rs_field_data.push_back("TABLE_CAT");
@@ -3939,10 +3965,14 @@ MySQL_ConnectionMetaData::getTables(const sql::SQLString& /* catalog */, const s
 	rs_field_data.push_back("TABLE_TYPE");
 	rs_field_data.push_back("REMARKS");
 
+	connection->getClientOption("metadataUseInfoSchema", (void *) &use_info_schema);
+
 	/* Bind Problems with 49999, check later why */
 	if (use_info_schema && server_version > 49999) {
 		const sql::SQLString query("SELECT TABLE_CATALOG AS TABLE_CAT, TABLE_SCHEMA AS TABLE_SCHEM, TABLE_NAME,"
-							"IF(STRCMP(TABLE_TYPE,'BASE TABLE'), TABLE_TYPE, 'TABLE') AS TABLE_TYPE, TABLE_COMMENT AS REMARKS\n"
+							"IF(STRCMP(TABLE_TYPE,'BASE TABLE'), "
+							"IF(STRCMP(TABLE_TYPE,'SYSTEM VIEW'), TABLE_TYPE, 'VIEW'),"
+							" 'TABLE') AS TABLE_TYPE, TABLE_COMMENT AS REMARKS\n"
 							"FROM INFORMATION_SCHEMA.TABLES\nWHERE TABLE_SCHEMA  LIKE ? AND TABLE_NAME LIKE ?\n"
 							"ORDER BY TABLE_TYPE, TABLE_SCHEMA, TABLE_NAME");
 
@@ -3976,7 +4006,7 @@ MySQL_ConnectionMetaData::getTables(const sql::SQLString& /* catalog */, const s
 		boost::scoped_ptr< sql::ResultSet > rs1(stmt->executeQuery(query1));
 		while (rs1->next()) {
 			sql::SQLString current_schema(rs1->getString(1));
-			sql::SQLString query2("SHOW TABLES FROM `");
+			sql::SQLString query2("SHOW FULL TABLES FROM `");
 			query2.append(current_schema).append("` LIKE '").append(escapedTableNamePattern).append("'");
 
 			boost::scoped_ptr< sql::ResultSet > rs2(stmt->executeQuery(query2));
@@ -3986,7 +4016,7 @@ MySQL_ConnectionMetaData::getTables(const sql::SQLString& /* catalog */, const s
 				for (; it != types.end(); ++it) {
 					/* < 49999 knows only TABLE, no VIEWS */
 					/* TODO: Optimize this everytime checking, put it outside of the loop */
-					if (!it->compare("TABLE")) {
+					if (!it->compare("TABLE") && !(rs2->getString(2)).compare("BASE TABLE")) {
 						MySQL_ArtResultSet::row_t rs_data_row;
 
 						CPP_INFO_FMT("[][%s][%s][TABLE][]", current_schema.c_str(), rs2->getString(1).c_str());
@@ -3998,15 +4028,25 @@ MySQL_ConnectionMetaData::getTables(const sql::SQLString& /* catalog */, const s
 
 						rs_data->push_back(rs_data_row);
 						break;
+					} else if (!it->compare(rs2->getString(2)) && server_version > 49999) {
+						MySQL_ArtResultSet::row_t rs_data_row;
+
+						CPP_INFO_FMT("[][%s][%s][TABLE][]", current_schema.c_str(), rs2->getString(1).c_str());
+						rs_data_row.push_back("def");				// TABLE_CAT
+						rs_data_row.push_back(current_schema);		// TABLE_SCHEM
+						rs_data_row.push_back(rs2->getString(1));	// TABLE_NAME
+						rs_data_row.push_back("VIEW");				// TABLE_TYPE
+						rs_data_row.push_back("");					// REMARKS
+
+						rs_data->push_back(rs_data_row);
+						break;
 					}
 				}
 			}
 		}
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -4023,7 +4063,7 @@ MySQL_ConnectionMetaData::getTableTypes()
 	std::list<sql::SQLString> rs_field_data;
 	rs_field_data.push_back("TABLE_TYPE");
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	for (unsigned int i = 0; i < 3; ++i) {
 		if (server_version >= requiredVersion[i]) {
@@ -4034,9 +4074,7 @@ MySQL_ConnectionMetaData::getTableTypes()
 		}
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -4054,7 +4092,7 @@ MySQL_ConnectionMetaData::getTableCollation(const sql::SQLString& /* catalog */,
 	sql::SQLString escapedSchemaPattern = connection->escapeString(schemaPattern);
 	sql::SQLString escapedTableNamePattern = connection->escapeString(tableNamePattern);
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	std::list<sql::SQLString> rs_field_data;
 	rs_field_data.push_back("TABLE_CAT");
@@ -4079,9 +4117,7 @@ MySQL_ConnectionMetaData::getTableCollation(const sql::SQLString& /* catalog */,
 
 		rs_data->push_back(rs_data_row);
 	}
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -4099,7 +4135,7 @@ MySQL_ConnectionMetaData::getTableCharset(const sql::SQLString& /* catalog */,
 	sql::SQLString escapedSchemaPattern = connection->escapeString(schemaPattern);
 	sql::SQLString escapedTableNamePattern = connection->escapeString(tableNamePattern);
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	std::list<sql::SQLString> rs_field_data;
 	rs_field_data.push_back("TABLE_CAT");
@@ -4126,9 +4162,7 @@ MySQL_ConnectionMetaData::getTableCharset(const sql::SQLString& /* catalog */,
 
 		rs_data->push_back(rs_data_row);
 	}
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -4179,7 +4213,7 @@ MySQL_ConnectionMetaData::getTypeInfo()
 	rs_field_data.push_back("SQL_DATETIME_SUB");
 	rs_field_data.push_back("NUM_PREC_RADIX");
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
 	int i = 0;
 	while (mysqlc_types[i].typeName) {
@@ -4209,9 +4243,7 @@ MySQL_ConnectionMetaData::getTypeInfo()
 		++i;
 	}
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -4232,11 +4264,9 @@ MySQL_ConnectionMetaData::getUDTs(const sql::SQLString& /*catalog*/, const sql::
 	rs_field_data.push_back("DATA_TYPE");
 	rs_field_data.push_back("REMARKS");
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */
@@ -4283,11 +4313,9 @@ MySQL_ConnectionMetaData::getVersionColumns(const sql::SQLString& /*catalog*/, c
 	rs_field_data.push_back("DECIMAL_DIGITS");
 	rs_field_data.push_back("PSEUDO_COLUMN");
 
-	std::auto_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
+	boost::shared_ptr< MySQL_ArtResultSet::rset_t > rs_data(new MySQL_ArtResultSet::rset_t());
 
-	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data.get(), logger);
-	// If there is no exception we can release otherwise on function exit memory will be freed
-	rs_data.release();
+	MySQL_ArtResultSet * ret = new MySQL_ArtResultSet(rs_field_data, rs_data, logger);
 	return ret;
 }
 /* }}} */

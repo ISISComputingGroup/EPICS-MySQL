@@ -19570,7 +19570,7 @@ static my_bool
 my_uca_alloc_contractions(MY_CONTRACTIONS *contractions,
                           MY_CHARSET_LOADER *loader, size_t n)
 {
-  uint size= n * sizeof(MY_CONTRACTION);
+  size_t size= n * sizeof(MY_CONTRACTION);
   if (!(contractions->item= (loader->once_alloc)(size)) ||
       !(contractions->flags= (char *) (loader->once_alloc)(MY_UCA_CNT_FLAG_SIZE)))
     return 1;
@@ -21003,7 +21003,7 @@ static int
 my_coll_rules_realloc(MY_COLL_RULES *rules, size_t n)
 {
   if (rules->nrules < rules->mrules ||
-      (rules->rule= rules->loader->realloc(rules->rule,
+      (rules->rule= rules->loader->mem_realloc(rules->rule,
                                            sizeof(MY_COLL_RULE) *
                                            (rules->mrules= n + 128))))
     return 0;
@@ -22074,7 +22074,7 @@ create_tailoring(CHARSET_INFO *cs, MY_CHARSET_LOADER *loader)
   cs->uca[0]= new_uca;
 
 ex:
-  (loader->free)(rules.rule);
+  (loader->mem_free)(rules.rule);
   if (rc != 0 && loader->error[0])
     loader->reporter(ERROR_LEVEL, "%s", loader->error);
   return rc;
@@ -26470,8 +26470,8 @@ CHARSET_INFO my_charset_gb18030_unicode_520_ci=
     NULL,              /* state_map     */
     NULL,              /* ident_map     */
     8,                 /* strxfrm_multiply */
-    1,                 /* caseup_multiply  */
-    1,                 /* casedn_multiply  */
+    2,                 /* caseup_multiply  */
+    2,                 /* casedn_multiply  */
     1,                 /* mbminlen      */
     4,                 /* mbmaxlen      */
     2,                 /* mbmaxlenlen   */

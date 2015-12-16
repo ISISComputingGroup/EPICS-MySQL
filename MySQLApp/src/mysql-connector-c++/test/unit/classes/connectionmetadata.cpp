@@ -506,6 +506,41 @@ void connectionmetadata::getColumns()
       FAIL("TODO - see --verbose warnings");
     }
 
+    try {
+      bool input_value=true;
+      bool output_value=false;
+      void * input;
+      void * output;
+
+      stmt->execute("CREATE TABLE test(id INT,val VARCHAR(20))");
+
+      input=(static_cast<bool *> (&input_value));
+      output=(static_cast<bool *> (&output_value));
+
+      con->setClientOption("metadataUseInfoSchema", input);
+      con->getClientOption("metadataUseInfoSchema", output);
+      ASSERT_EQUALS(input_value, output_value);
+
+      dbmeta=con->getMetaData();
+      res.reset(dbmeta->getColumns(con->getCatalog(), "", "test", "%"));
+      ASSERT(res->rowsCount() == 2);
+
+      input_value=false;
+      output_value=true;
+
+      con->setClientOption("metadataUseInfoSchema", input);
+      con->getClientOption("metadataUseInfoSchema", output);
+      ASSERT_EQUALS(input_value, output_value);
+
+      dbmeta=con->getMetaData();
+      res.reset(dbmeta->getColumns(con->getCatalog(), "", "test", "%"));
+      ASSERT(res->rowsCount() == 2);
+    }
+    catch (sql::SQLException &)
+    {
+      FAIL("getColumns() does not work properly for metadataUseInfoSchema");
+    }
+
     stmt->execute("DROP TABLE IF EXISTS test");
     res.reset(dbmeta->getColumns(con->getCatalog(), con->getSchema(), "test", "id"));
     ASSERT(!res->next());
@@ -522,19 +557,18 @@ void connectionmetadata::getColumns()
 void connectionmetadata::getConnection()
 {
   logMsg("connectionmetadata::getConnection() - MySQL_ConnectionMetaData::getConnection");
-  Connection same_con;
+  sql::Connection *same_con;
   try
   {
     stmt.reset(con->createStatement());
     stmt->execute("SET @this_is_my_connection_id=101");
     DatabaseMetaData * dbmeta=con->getMetaData();
-    same_con.reset(dbmeta->getConnection());
+    same_con= dbmeta->getConnection();
     stmt.reset(same_con->createStatement());
     res.reset(stmt->executeQuery("SELECT @this_is_my_connection_id AS _connection_id"));
     ASSERT(res->next());
     ASSERT_EQUALS(101, res->getInt("_connection_id"));
     ASSERT_EQUALS(res->getInt(1), res->getInt("_connection_id"));
-    same_con.release(); // if the same don't clean it, it will be double free
   }
   catch (sql::SQLException &e)
   {
@@ -2300,6 +2334,52 @@ void connectionmetadata::getTableCharset()
 	ASSERT_EQUALS("utf8", res->getString("TABLE_CHARSET"));
 
 	stmt->execute("DROP DATABASE IF EXISTS charsetTestDatabase");
+  }
+  catch (sql::SQLException &e)
+  {
+
+    logErr(e.what());
+    logErr("SQLState: " + std::string(e.getSQLState()));
+    fail(e.what(), __FILE__, __LINE__);
+  }
+}
+
+
+void connectionmetadata::getTables()
+{
+  logMsg("connectionmetadata::getTables - MySQL_ConnectionMetaData::getTables()");
+  try
+  {
+	ResultSetMetaData * resmeta;
+	DatabaseMetaData * dbmeta=con->getMetaData();
+	std::list< sql::SQLString > tableTypes;
+
+	stmt.reset(con->createStatement());
+	stmt->execute("DROP TABLE IF EXISTS testTable1");
+	stmt->execute("CREATE TABLE testTable1(id INT)");
+	stmt->execute("DROP VIEW IF EXISTS testView1");
+	stmt->execute("CREATE VIEW testView1 AS SELECT * FROM testTable1");
+
+	/* for tableType = TABLE */
+	tableTypes.clear();
+	tableTypes.push_back(sql::SQLString("TABLE"));
+	res.reset(dbmeta->getTables("", "%", "testTable%", tableTypes));
+	ASSERT(res->next());
+
+	ASSERT_EQUALS(res->getString(3), "testTable1");
+	ASSERT_EQUALS(res->getString(4), "TABLE");
+
+	/* for tableType = VIEW */
+	tableTypes.clear();
+	tableTypes.push_back(sql::SQLString("VIEW"));
+	res.reset(dbmeta->getTables("", "%", "testView%", tableTypes));
+	ASSERT(res->next());
+
+	ASSERT_EQUALS(res->getString(3), "testView1");
+	ASSERT_EQUALS(res->getString(4), "VIEW");
+
+  	stmt->execute("DROP TABLE IF EXISTS testTable1");
+	stmt->execute("DROP VIEW IF EXISTS testView1");
   }
   catch (sql::SQLException &e)
   {
