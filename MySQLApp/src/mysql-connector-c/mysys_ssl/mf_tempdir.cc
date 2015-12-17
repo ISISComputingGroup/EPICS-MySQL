@@ -13,6 +13,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
+#include <stdio.h> /* for P_tmpdir */
 #include "mysys_priv.h"
 #include <m_string.h>
 #include "prealloced_array.h"
@@ -22,6 +23,10 @@
 #define DELIM ';'
 #else
 #define DELIM ':'
+#endif
+
+#if defined(_WIN32) && (_MSC_VER >= 1900)
+#define P_tmpdir (getenv("TMP") != NULL ? getenv("TMP") : "")
 #endif
 
 my_bool init_tmpdir(MY_TMPDIR *tmpdir, const char *pathlist)

@@ -24,7 +24,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 
 
-
+#include <stdlib.h>
 #include "start_options.h"
 
 

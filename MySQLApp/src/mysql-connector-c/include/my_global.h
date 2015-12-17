@@ -646,6 +646,7 @@ static inline struct tm *gmtime_r(const time_t *clock, struct tm *res)
   return res;
 }
 
+#define timespec my_timespec
 
 /*
   Declare a union to make sure FILETIME is properly aligned

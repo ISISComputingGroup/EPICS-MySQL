@@ -64,7 +64,7 @@ uint calc_days_in_year(uint year)
    @param tm[OUT]    The value to set.
    @param time_type  Timestasmp type
 */
-inline void set_zero_time(MYSQL_TIME *tm,
+void set_zero_time(MYSQL_TIME *tm,
                           enum enum_mysql_timestamp_type time_type)
 {
   memset(tm, 0, sizeof(*tm));

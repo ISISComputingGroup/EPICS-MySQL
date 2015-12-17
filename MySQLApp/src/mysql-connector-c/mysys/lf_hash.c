@@ -60,6 +60,9 @@ typedef struct {
 #define PTR(V)      (LF_SLIST *)((V) & (~(intptr)1))
 #define DELETED(V)  ((V) & 1)
 
+#define lfind my_lfind
+#define lsearch my_lsearch
+
 /*
   DESCRIPTION
     Search for hashnr/key/keylen in the list starting from 'head' and

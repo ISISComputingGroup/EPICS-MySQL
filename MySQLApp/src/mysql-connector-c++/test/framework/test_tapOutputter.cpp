@@ -24,9 +24,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 
 
-#include "test_tapOutputter.h"
 #include <stdio.h>
 #include <sstream>
+#include "test_tapOutputter.h"
 
 namespace testsuite
 {

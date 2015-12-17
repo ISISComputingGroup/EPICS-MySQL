@@ -24,9 +24,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 
 
-#include "stringutils.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "stringutils.h"
 
 namespace StringUtils
 {
