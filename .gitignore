@@ -92,3 +92,4 @@ MySQLApp/src/mysql-connector-c/libmysql/mysqlclient_depends.c
 MySQLApp/src/mysql-connector-c/sql/share/english/
 MySQLApp/src/mysql-connector-c/tests/mysql_client_test
 
+.project
