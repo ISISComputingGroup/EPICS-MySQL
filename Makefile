@@ -10,6 +10,7 @@ define DIR_template
 endef
 $(foreach dir, $(filter-out configure,$(DIRS)),$(eval $(call DIR_template,$(dir))))
 
+MySQLTestApp_DEPEND_DIRS += MySQLApp
 iocBoot_DEPEND_DIRS += $(filter %App,$(DIRS))
 
 UNINSTALL_DIRS += $(TOP)/install
