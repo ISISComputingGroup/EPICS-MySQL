@@ -6,7 +6,7 @@ include $(TOP)/configure/CONFIG
 VS_VERS=$(filter %.0,$(subst \, ,$(VSINSTALLDIR)))
 VS_MAJOR=$(word 1,$(subst ., ,$(VS_VERS)))
 
-MYSQL_DIR=$(MYSQL)/install
+MYSQL_DIR=$(MYSQL)/install/$(EPICS_HOST_ARCH)
 CMAKE_CONFIG_FLAGS=-DBOOST_ROOT:STRING=$(EPICS_ROOT)/libraries/master/boost
 CMAKE_BUILD_FLAGS=
 ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
@@ -34,8 +34,8 @@ include $(TOP)/configure/RULES
 
 ifdef T_A
 install:
-	$(MAKE) -C ../mysql-connector-c -f Makefile.epics install T_A=$(T_A) CMAKE_CONFIG=$(CMAKE_CONFIG) CMAKE_CONFIG_FLAGS="$(CMAKE_CONFIG_FLAGS)" CMAKE_GENERATOR="$(CMAKE_GENERATOR)" CMAKE_BUILD_FLAGS="$(CMAKE_BUILD_FLAGS)" MYSQL_DIR="$(MYSQL_DIR)"
-	$(MAKE) -C ../mysql-connector-c++ -f Makefile.epics install T_A=$(T_A) CMAKE_CONFIG=$(CMAKE_CONFIG) CMAKE_CONFIG_FLAGS="$(CMAKE_CONFIG_FLAGS)" CMAKE_GENERATOR="$(CMAKE_GENERATOR)" CMAKE_BUILD_FLAGS="$(CMAKE_BUILD_FLAGS)" MYSQL_DIR="$(MYSQL_DIR)"
+	cmake ../mysql-connector-c -G "$(CMAKE_GENERATOR)" -DCMAKE_INSTALL_PREFIX:PATH="$(MYSQL_DIR)" $(CMAKE_CONFIG_FLAGS)
+	cmake --build . --target install --config $(CMAKE_CONFIG) $(CMAKE_BUILD_FLAGS)
 	-$(MKDIR) $(TOP)/bin
 	-$(MKDIR) $(TOP)/bin/$(EPICS_HOST_ARCH)
 	-$(MKDIR) $(TOP)/lib
@@ -64,8 +64,9 @@ else
 endif
 endif
 
-clean::
-	$(MAKE) -C mysql-connector-c -f Makefile.epics clean CMAKE_CONFIG=$(CMAKE_CONFIG) PLATFORM=$(PLATFORM)
-	$(MAKE) -C mysql-connector-c++ -f Makefile.epics clean CMAKE_CONFIG=$(CMAKE_CONFIG) PLATFORM=$(PLATFORM)
-
-uninstall:
+#clean::
+#	$(MAKE) -C mysql-connector-c -f Makefile.epics clean T_A=$(T_A) CMAKE_CONFIG=$(CMAKE_CONFIG) PLATFORM=$(PLATFORM) MYSQL_DIR="$(MYSQL_DIR)"
+#	$(MAKE) -C mysql-connector-c++ -f Makefile.epics clean T_A=$(T_A) CMAKE_CONFIG=$(CMAKE_CONFIG) PLATFORM=$(PLATFORM) MYSQL_DIR="$(MYSQL_DIR)"
+#
+#uninstall:
+#	$(RMDIR) $(MYSQL_DIR)
