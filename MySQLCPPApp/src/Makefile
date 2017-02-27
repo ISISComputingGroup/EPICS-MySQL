@@ -34,7 +34,7 @@ include $(TOP)/configure/RULES
 
 ifdef T_A
 install:
-	cmake ../mysql-connector-c -G "$(CMAKE_GENERATOR)" -DCMAKE_INSTALL_PREFIX:PATH="$(MYSQL_DIR)" $(CMAKE_CONFIG_FLAGS)
+	cmake ../mysql-connector-c++ -G "$(CMAKE_GENERATOR)" -DCMAKE_INSTALL_PREFIX:PATH="$(MYSQL_DIR)" $(CMAKE_CONFIG_FLAGS)
 	cmake --build . --target install --config $(CMAKE_CONFIG) $(CMAKE_BUILD_FLAGS)
 	-$(MKDIR) $(TOP)/bin
 	-$(MKDIR) $(TOP)/bin/$(EPICS_HOST_ARCH)
@@ -67,6 +67,16 @@ endif
 #clean::
 #	$(MAKE) -C mysql-connector-c -f Makefile.epics clean T_A=$(T_A) CMAKE_CONFIG=$(CMAKE_CONFIG) PLATFORM=$(PLATFORM) MYSQL_DIR="$(MYSQL_DIR)"
 #	$(MAKE) -C mysql-connector-c++ -f Makefile.epics clean T_A=$(T_A) CMAKE_CONFIG=$(CMAKE_CONFIG) PLATFORM=$(PLATFORM) MYSQL_DIR="$(MYSQL_DIR)"
-#
+#clean::
+#ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
+#	$(MAKE) -f Makefile clean
+#else
+#	-msbuild MYSQLCPPCONN.sln /t:clean /nologo /verbosity:quiet /p:Configuration=$(CMAKE_CONFIG) /p:Platform=$(PLATFORM)
+#endif
+#	-$(RM) CMakeCache.txt cmake_install.cmake
+#	-$(RM) $(call rfind, ., *.sln *.vcxproj *.vcxproj.filters cmake_install.cmake)
+#	-$(RMDIR) CMakeFiles
+
+
 #uninstall:
 #	$(RMDIR) $(MYSQL_DIR)
