@@ -34,7 +34,7 @@ include $(TOP)/configure/RULES
 
 ifdef T_A
 install:
-	cmake ../mysql-connector-c++ -G "$(CMAKE_GENERATOR)" -DCMAKE_INSTALL_PREFIX:PATH="$(MYSQL_DIR)" $(CMAKE_CONFIG_FLAGS)
+	cmake ../mysql-connector-c++ -G "$(CMAKE_GENERATOR)" -DCMAKE_INSTALL_PREFIX:PATH="$(MYSQL_DIR)" -DMYSQL_DIR:PATH="$(MYSQL_DIR)" $(CMAKE_CONFIG_FLAGS)
 	cmake --build . --target install --config $(CMAKE_CONFIG) $(CMAKE_BUILD_FLAGS)
 	-$(MKDIR) $(TOP)/bin
 	-$(MKDIR) $(TOP)/bin/$(EPICS_HOST_ARCH)

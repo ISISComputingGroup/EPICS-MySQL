@@ -43,11 +43,9 @@ install:
 	-$(MKDIR) $(TOP)/include
 	-$(MKDIR) $(TOP)/include/mysql
 	-$(MKDIR) $(TOP)/include/mysql/psi
-	-$(MKDIR) $(TOP)/include/cppconn
 	$(CP) -f $(MYSQL_DIR)/include/*.h* $(TOP)/include/
 	$(CP) -f $(MYSQL_DIR)/include/mysql/*.h* $(TOP)/include/mysql/
 	$(CP) -f $(MYSQL_DIR)/include/mysql/psi/*.h* $(TOP)/include/mysql/psi/
-	$(CP) -f $(MYSQL_DIR)/include/cppconn/*.h* $(TOP)/include/cppconn/
 	$(CP) -f $(MYSQL_DIR)/bin/* $(TOP)/bin/$(EPICS_HOST_ARCH)/
 # this directory (on windows) causes cp from lib to fail
 	-$(RMDIR) $(MYSQL_DIR)/lib/debug
