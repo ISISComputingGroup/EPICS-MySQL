@@ -3,7 +3,12 @@ include $(TOP)/configure/CONFIG
 
 # extract visual studio major version number from path
 # unfortunately cannot use %.% so using %.0 but may not match minor version number changes e.g. 10.1
+ifneq ($(VisualStudioVersion),)
+VS_VERS=$(filter %.0,$(subst \, ,$(VisualStudioVersion)))
+else
 VS_VERS=$(filter %.0,$(subst \, ,$(VSINSTALLDIR)))
+endif
+
 VS_MAJOR=$(word 1,$(subst ., ,$(VS_VERS)))
 
 MYSQL_DIR=$(MYSQL)/install/$(EPICS_HOST_ARCH)
