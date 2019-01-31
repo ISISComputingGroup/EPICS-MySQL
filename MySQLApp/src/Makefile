@@ -1,6 +1,8 @@
 TOP = ../..
 include $(TOP)/configure/CONFIG
 
+CMAKE ?= cmake
+
 # extract visual studio major version number from path
 # unfortunately cannot use %.% so using %.0 but may not match minor version number changes e.g. 10.1
 ifneq ($(VisualStudioVersion),)
@@ -38,8 +40,8 @@ include $(TOP)/configure/RULES
 
 ifdef T_A
 install:
-	cmake ../mysql-connector-c -G "$(CMAKE_GENERATOR)" -DCMAKE_INSTALL_PREFIX:PATH="$(MYSQL_DIR)" $(CMAKE_CONFIG_FLAGS)
-	cmake --build . --target install --config $(CMAKE_CONFIG) $(CMAKE_BUILD_FLAGS)
+	$(CMAKE) ../mysql-connector-c -G "$(CMAKE_GENERATOR)" -DCMAKE_INSTALL_PREFIX:PATH="$(MYSQL_DIR)" $(CMAKE_CONFIG_FLAGS)
+	$(CMAKE) --build . --target install --config $(CMAKE_CONFIG) $(CMAKE_BUILD_FLAGS)
 	-$(MKDIR) $(TOP)/bin
 	-$(MKDIR) $(TOP)/bin/$(EPICS_HOST_ARCH)
 	-$(MKDIR) $(TOP)/lib
