@@ -8,7 +8,7 @@ O.*/
 /install/
 envPaths
 cdCommands
-dllPath.bat
+dllPath*.bat
 runIOC.bat
 runIOC.sh
 relPaths.sh
@@ -16,3 +16,4 @@ relPaths.sh
 *.so*
 .project
 .idea
+NULL
