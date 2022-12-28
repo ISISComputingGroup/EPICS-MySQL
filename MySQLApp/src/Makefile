@@ -1,6 +1,9 @@
 TOP = ../..
 include $(TOP)/configure/CONFIG
 
+## setting MAKEFLAGS causes cmake issues
+override MAKEFLAGS=
+
 CMAKE ?= cmake
 
 # extract visual studio major version number from path
