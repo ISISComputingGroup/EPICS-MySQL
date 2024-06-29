@@ -36,12 +36,12 @@ namespace sql
 {
 
 #define MEMORY_ALLOC_OPERATORS(Class) \
-	void* operator new(size_t size) throw (std::bad_alloc) { return ::operator new(size); }  \
-	void* operator new(size_t, void*) throw(); \
-	void* operator new(size_t, const std::nothrow_t&) throw(); \
-	void* operator new[](size_t) throw (std::bad_alloc); \
-	void* operator new[](size_t, void*) throw(); \
-	void* operator new[](size_t, const std::nothrow_t&) throw(); \
+	void* operator new(size_t size) noexcept(false) { return ::operator new(size); }  \
+	void* operator new(size_t, void*) noexcept; \
+	void* operator new(size_t, const std::nothrow_t&) noexcept; \
+	void* operator new[](size_t) noexcept(false); \
+	void* operator new[](size_t, void*) noexcept; \
+	void* operator new[](size_t, const std::nothrow_t&) noexcept; \
 	void* operator new(size_t N, std::allocator<Class>&);
 
 #ifdef _WIN32
