@@ -74,6 +74,7 @@ install:
 ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 # dlls and pdbs need to be in bin not lib (and leaving copy in lib causes link errors)
 	$(CP) -f $(MYSQL_DIR)/lib64/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
+	$(CP) -f $(MYSQL_DIR)/lib64/vs14/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
 	$(CP) -f $(MYSQL_DIR)/lib64/*.dll $(TOP)/bin/$(EPICS_HOST_ARCH)/
 	$(CP) -f $(MYSQL_DIR)/lib64/*.pdb $(TOP)/bin/$(EPICS_HOST_ARCH)/
 else
