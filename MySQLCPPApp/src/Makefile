@@ -17,7 +17,7 @@ endif
 VS_MAJOR=$(word 1,$(subst ., ,$(VS_VERS)))
 
 MYSQL_DIR=$(MYSQL)/install/$(EPICS_HOST_ARCH)
-CMAKE_CONFIG_FLAGS=-DBOOST_ROOT:STRING=$(EPICS_ROOT)/libraries/master/boost
+CMAKE_CONFIG_FLAGS=-DBOOST_ROOT:STRING=$(EPICS_ROOT)/libraries/master/boost -DWITH_SSL=$(OPENSSL)/install/$(EPICS_HOST_ARCH) -DWITH_JDBC=ON -DWITH_MYSQL=c:\instrument\apps\mysql
 CMAKE_BUILD_FLAGS=
 ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 CMAKE_GENERATOR=Unix Makefiles
@@ -44,7 +44,7 @@ include $(TOP)/configure/RULES
 
 ifdef T_A
 install:
-	$(CMAKE) ../mysql-connector-c++ -G "$(CMAKE_GENERATOR)" -A "$(PLATFORM)" -DCMAKE_INSTALL_PREFIX:PATH="$(MYSQL_DIR)" -DMYSQL_DIR:PATH="$(MYSQL_DIR)" $(CMAKE_CONFIG_FLAGS)
+	$(CMAKE) ../mysql-connector-c++ -G "$(CMAKE_GENERATOR)" -A "$(PLATFORM)" -DCMAKE_INSTALL_PREFIX:PATH="$(MYSQL_DIR)" $(CMAKE_CONFIG_FLAGS)
 	$(CMAKE) --build . --target install --config $(CMAKE_CONFIG) $(CMAKE_BUILD_FLAGS)
 	-$(MKDIR) $(TOP)/bin
 	-$(MKDIR) $(TOP)/bin/$(EPICS_HOST_ARCH)
@@ -53,40 +53,31 @@ install:
 	-$(MKDIR) $(TOP)/include
 	-$(MKDIR) $(TOP)/include/mysql
 	-$(MKDIR) $(TOP)/include/mysql/psi
-	-$(MKDIR) $(TOP)/include/cppconn
+	-$(MKDIR) $(TOP)/include/jdbc
+	-$(MKDIR) $(TOP)/include/jdbc/cppconn
+	-$(MKDIR) $(TOP)/include/mysqlx
+	-$(MKDIR) $(TOP)/include/mysqlx/common
+	-$(MKDIR) $(TOP)/include/mysqlx/devapi
+	-$(MKDIR) $(TOP)/include/mysqlx/devapi/detail
 	$(CP) -f $(MYSQL_DIR)/include/*.h* $(TOP)/include/
 	$(CP) -f $(MYSQL_DIR)/include/mysql/*.h* $(TOP)/include/mysql/
 	$(CP) -f $(MYSQL_DIR)/include/mysql/psi/*.h* $(TOP)/include/mysql/psi/
-	$(CP) -f $(MYSQL_DIR)/include/cppconn/*.h* $(TOP)/include/cppconn/
+	$(CP) -f $(MYSQL_DIR)/include/jdbc/*.h* $(TOP)/include/jdbc/
+	$(CP) -f $(MYSQL_DIR)/include/jdbc/cppconn/*.h* $(TOP)/include/jdbc/cppconn/
+	$(CP) -f $(MYSQL_DIR)/include/mysqlx/*.h* $(TOP)/include/mysqlx/
+	$(CP) -f $(MYSQL_DIR)/include/mysqlx/common/*.h* $(TOP)/include/mysqlx/common/
+	$(CP) -f $(MYSQL_DIR)/include/mysqlx/devapi/*.h* $(TOP)/include/mysqlx/devapi/
+	$(CP) -f $(MYSQL_DIR)/include/mysqlx/devapi/detail/*.h* $(TOP)/include/mysqlx/devapi/detail/
 	$(CP) -f $(MYSQL_DIR)/bin/* $(TOP)/bin/$(EPICS_HOST_ARCH)/
 # this directory (on windows) causes cp from lib to fail
 	-$(RMDIR) $(MYSQL_DIR)/lib/debug
 ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 # dlls and pdbs need to be in bin not lib (and leaving copy in lib causes link errors)
-	$(CP) -f $(MYSQL_DIR)/lib/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
-	$(CP) -f $(MYSQL_DIR)/lib/*.dll $(TOP)/bin/$(EPICS_HOST_ARCH)/
-	$(CP) -f $(MYSQL_DIR)/lib/*.pdb $(TOP)/bin/$(EPICS_HOST_ARCH)/
-	$(RM) -f $(TOP)/lib/$(EPICS_HOST_ARCH)/*.dll
-	$(RM) -f $(TOP)/lib/$(EPICS_HOST_ARCH)/*.pdb
+	$(CP) -f $(MYSQL_DIR)/lib64/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
+	$(CP) -f $(MYSQL_DIR)/lib64/*.dll $(TOP)/bin/$(EPICS_HOST_ARCH)/
+	$(CP) -f $(MYSQL_DIR)/lib64/*.pdb $(TOP)/bin/$(EPICS_HOST_ARCH)/
 else
 	if test -d $(MYSQL_DIR)/lib; then find $(MYSQL_DIR)/lib \( -type f -o -type l \) -exec $(CP) {} $(TOP)/lib/$(EPICS_HOST_ARCH)/ \; ; fi
 	if test -d $(MYSQL_DIR)/lib64; then find $(MYSQL_DIR)/lib64 \( -type f -o -type l \) -exec $(CP) {} $(TOP)/lib/$(EPICS_HOST_ARCH)/ \; ; fi
 endif
 endif
-
-#clean::
-#	$(MAKE) -C mysql-connector-c -f Makefile.epics clean T_A=$(T_A) CMAKE_CONFIG=$(CMAKE_CONFIG) PLATFORM=$(PLATFORM) MYSQL_DIR="$(MYSQL_DIR)"
-#	$(MAKE) -C mysql-connector-c++ -f Makefile.epics clean T_A=$(T_A) CMAKE_CONFIG=$(CMAKE_CONFIG) PLATFORM=$(PLATFORM) MYSQL_DIR="$(MYSQL_DIR)"
-#clean::
-#ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
-#	$(MAKE) -f Makefile clean
-#else
-#	-msbuild MYSQLCPPCONN.sln /t:clean /nologo /verbosity:quiet /p:Configuration=$(CMAKE_CONFIG) /p:Platform=$(PLATFORM)
-#endif
-#	-$(RM) CMakeCache.txt cmake_install.cmake
-#	-$(RM) $(call rfind, ., *.sln *.vcxproj *.vcxproj.filters cmake_install.cmake)
-#	-$(RMDIR) CMakeFiles
-
-
-#uninstall:
-#	$(RMDIR) $(MYSQL_DIR)
