@@ -10,16 +10,16 @@
 #include <sstream>
 #include <stdexcept>
 
-#include <cppconn/driver.h>
-#include <cppconn/exception.h>
-#include <cppconn/warning.h>
-#include <cppconn/metadata.h>
-#include <cppconn/prepared_statement.h>
-#include <cppconn/resultset.h>
-#include <cppconn/resultset_metadata.h>
-#include <cppconn/statement.h>
-#include "mysql_driver.h"
-#include "mysql_connection.h"
+#include <jdbc/cppconn/driver.h>
+#include <jdbc/cppconn/exception.h>
+#include <jdbc/cppconn/warning.h>
+#include <jdbc/cppconn/metadata.h>
+#include <jdbc/cppconn/prepared_statement.h>
+#include <jdbc/cppconn/resultset.h>
+#include <jdbc/cppconn/resultset_metadata.h>
+#include <jdbc/cppconn/statement.h>
+#include "jdbc/mysql_driver.h"
+#include "jdbc/mysql_connection.h"
 
 
 #include "epicsExit.h"

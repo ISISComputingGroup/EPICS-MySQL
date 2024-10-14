@@ -1,5 +1,0 @@
-http://dev.mysql.com/downloads/connector/cpp/
-
-C   6_1_6
-C++ 1_1_6
-
