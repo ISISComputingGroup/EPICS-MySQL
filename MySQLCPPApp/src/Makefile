@@ -16,8 +16,10 @@ endif
 
 VS_MAJOR=$(word 1,$(subst ., ,$(VS_VERS)))
 
+MYSQL_INSTALL_DIR = $(EPICS_ROOT)/ICP_Binaries/mysql/mysql-current
+
 MYSQL_DIR=$(MYSQL)/install/$(EPICS_HOST_ARCH)
-CMAKE_CONFIG_FLAGS=-DBOOST_ROOT:STRING=$(EPICS_ROOT)/libraries/master/boost -DWITH_SSL=$(OPENSSL)/install/$(EPICS_HOST_ARCH) -DWITH_JDBC=ON -DWITH_MYSQL=c:\instrument\apps\mysql
+CMAKE_CONFIG_FLAGS=-DBOOST_ROOT:STRING=$(EPICS_ROOT)/libraries/master/boost -DWITH_SSL=$(OPENSSL)/install/$(EPICS_HOST_ARCH) -DWITH_JDBC=ON -DWITH_MYSQL=$(MYSQL_INSTALL_DIR)
 CMAKE_BUILD_FLAGS=
 ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 CMAKE_GENERATOR=Unix Makefiles
@@ -38,6 +40,10 @@ else
 CMAKE_CONFIG=RelWithDebInfo
 endif
 
+BIN_INSTALLS_WIN32 += $(MYSQL_INSTALL_DIR)/lib/libmysql.dll
+BIN_INSTALLS_WIN32 += $(MYSQL_INSTALL_DIR)/bin/libcrypto-3-x64.dll
+BIN_INSTALLS_WIN32 += $(MYSQL_INSTALL_DIR)/bin/libssl-3-x64.dll
+
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE
@@ -51,23 +57,9 @@ install:
 	-$(MKDIR) $(TOP)/lib
 	-$(MKDIR) $(TOP)/lib/$(EPICS_HOST_ARCH)
 	-$(MKDIR) $(TOP)/include
-	-$(MKDIR) $(TOP)/include/mysql
-	-$(MKDIR) $(TOP)/include/mysql/psi
-	-$(MKDIR) $(TOP)/include/jdbc
-	-$(MKDIR) $(TOP)/include/jdbc/cppconn
-	-$(MKDIR) $(TOP)/include/mysqlx
-	-$(MKDIR) $(TOP)/include/mysqlx/common
-	-$(MKDIR) $(TOP)/include/mysqlx/devapi
-	-$(MKDIR) $(TOP)/include/mysqlx/devapi/detail
-	$(CP) -f $(MYSQL_DIR)/include/*.h* $(TOP)/include/
-	$(CP) -f $(MYSQL_DIR)/include/mysql/*.h* $(TOP)/include/mysql/
-	$(CP) -f $(MYSQL_DIR)/include/mysql/psi/*.h* $(TOP)/include/mysql/psi/
-	$(CP) -f $(MYSQL_DIR)/include/jdbc/*.h* $(TOP)/include/jdbc/
-	$(CP) -f $(MYSQL_DIR)/include/jdbc/cppconn/*.h* $(TOP)/include/jdbc/cppconn/
-	$(CP) -f $(MYSQL_DIR)/include/mysqlx/*.h* $(TOP)/include/mysqlx/
-	$(CP) -f $(MYSQL_DIR)/include/mysqlx/common/*.h* $(TOP)/include/mysqlx/common/
-	$(CP) -f $(MYSQL_DIR)/include/mysqlx/devapi/*.h* $(TOP)/include/mysqlx/devapi/
-	$(CP) -f $(MYSQL_DIR)/include/mysqlx/devapi/detail/*.h* $(TOP)/include/mysqlx/devapi/detail/
+	-$(MKDIR) $(TOP)/include/cppconn
+	$(CP) -f $(MYSQL_DIR)/include/jdbc/*.h $(TOP)/include/
+	$(CP) -f $(MYSQL_DIR)/include/jdbc/cppconn/*.h $(TOP)/include/cppconn/
 	$(CP) -f $(MYSQL_DIR)/bin/* $(TOP)/bin/$(EPICS_HOST_ARCH)/
 # this directory (on windows) causes cp from lib to fail
 	-$(RMDIR) $(MYSQL_DIR)/lib/debug
