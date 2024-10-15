@@ -1,8 +1,7 @@
-BOOST=$(EPICS_ROOT)/libraries/master/boost
 # Include macro as absolute path is required for install
 MYSQL=$(SUPPORT)/MySQL/master
 OPENSSL=$(SUPPORT)/OpenSSL/master
-
+ZLIB=$(SUPPORT)/zlib/master
 # optional extra local definitions here
 -include $(TOP)/configure/RELEASE.private
 
