@@ -26,7 +26,7 @@ $(APPNAME)_DBD += base.dbd
 $(APPNAME)_LIBS += $(MYSQLLIB)
 
 ifeq ($(STATIC_BUILD),YES)
-#USR_CXXFLAGS += -DCPPCONN_LIB_BUILD
+USR_CXXFLAGS += -DSTATIC_CONCPP
 endif
 
 # MySQLTest_registerRecordDeviceDriver.cpp derives from MySQLTest.dbd
