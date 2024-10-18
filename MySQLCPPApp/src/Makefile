@@ -18,8 +18,6 @@ VS_MAJOR=$(word 1,$(subst ., ,$(VS_VERS)))
 
 MYSQL_INSTALL_DIR = $(EPICS_ROOT)/ICP_Binaries/mysql/mysql-current
 
-MYSQLCONN_DIR=$(MYSQL)/install/$(EPICS_HOST_ARCH)
-
 CMAKE_CONFIG_FLAGS=-DWITH_SSL=$(OPENSSL)/install/$(EPICS_HOST_ARCH) -DWITH_JDBC=ON -DWITH_MYSQL=$(MYSQL_INSTALL_DIR) 
 
 # this would use zlib bundled in ibex, we may nede this for static linking as mysql bindles a zlib and
@@ -51,25 +49,37 @@ ifneq ($(findstring static,$(EPICS_HOST_ARCH)),)
 CMAKE_CONFIG_FLAGS += -DBUILD_STATIC:BOOL=ON -DSTATIC_MSVCRT:BOOL=ON -DMYSQLCLIENT_STATIC_LINKING:BOOL=ON
 endif
 
+ifneq ($(findstring win32,$(EPICS_HOST_ARCH)),)
+MYSQLCONN_DIR = $(EPICS_ROOT)/ICP_Binaries/mysql/mysql-connector-c++-8.0.33-win32
+BIN_INSTALLS_WIN32 += $(MYSQLCONN_DIR)/bin/*.dll
+BIN_INSTALLS_WIN32 += $(MYSQLCONN_DIR)/lib/*.dll
+LIB_INSTALLS_WIN32 += $(MYSQLCONN_DIR)/lib/vs14/mysqlcppconn*.lib
+else
+MYSQLCONN_DIR=$(MYSQL)/install/$(EPICS_HOST_ARCH)
 BIN_INSTALLS_WIN32 += $(MYSQL_INSTALL_DIR)/lib/libmysql.dll
 BIN_INSTALLS_WIN32 += $(OPENSSL)/bin/$(EPICS_HOST_ARCH)/*.dll
+endif
 
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE
+.PHONY: installheaders
 
 ifdef T_A
-install:
+installheaders:
+	-$(MKDIR) $(TOP)/include
+	-$(MKDIR) $(TOP)/include/cppconn
+	$(CP) -f $(MYSQLCONN_DIR)/include/jdbc/*.h $(TOP)/include/
+	$(CP) -f $(MYSQLCONN_DIR)/include/jdbc/cppconn/*.h $(TOP)/include/cppconn/
+
+install: installheaders
+ifeq ($(findstring win32,$(EPICS_HOST_ARCH)),)
 	$(CMAKE) ../mysql-connector-c++ -G "$(CMAKE_GENERATOR)" -A "$(PLATFORM)" -DCMAKE_INSTALL_PREFIX:PATH="$(MYSQLCONN_DIR)" $(CMAKE_CONFIG_FLAGS)
 	$(CMAKE) --build . --target install --config $(CMAKE_CONFIG) $(CMAKE_BUILD_FLAGS)
 	-$(MKDIR) $(TOP)/bin
 	-$(MKDIR) $(TOP)/bin/$(EPICS_HOST_ARCH)
 	-$(MKDIR) $(TOP)/lib
 	-$(MKDIR) $(TOP)/lib/$(EPICS_HOST_ARCH)
-	-$(MKDIR) $(TOP)/include
-	-$(MKDIR) $(TOP)/include/cppconn
-	$(CP) -f $(MYSQLCONN_DIR)/include/jdbc/*.h $(TOP)/include/
-	$(CP) -f $(MYSQLCONN_DIR)/include/jdbc/cppconn/*.h $(TOP)/include/cppconn/
 	$(CP) -f $(MYSQLCONN_DIR)/bin/* $(TOP)/bin/$(EPICS_HOST_ARCH)/
 ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 # dlls and pdbs need to be in bin not lib (and leaving copy in lib causes link errors)
@@ -80,5 +90,6 @@ ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 else
 	if test -d $(MYSQLCONN_DIR)/lib; then find $(MYSQLCONN_DIR)/lib \( -type f -o -type l \) -exec $(CP) {} $(TOP)/lib/$(EPICS_HOST_ARCH)/ \; ; fi
 	if test -d $(MYSQLCONN_DIR)/lib64; then find $(MYSQLCONN_DIR)/lib64 \( -type f -o -type l \) -exec $(CP) {} $(TOP)/lib/$(EPICS_HOST_ARCH)/ \; ; fi
+endif
 endif
 endif
