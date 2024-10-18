@@ -74,16 +74,9 @@ endif
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE
-.PHONY: installheaders
 
 ifdef T_A
-installheaders:
-	-$(MKDIR) $(TOP)/include
-	-$(MKDIR) $(TOP)/include/cppconn
-	$(CP) -f $(MYSQLCONN_DIR)/include/jdbc/*.h $(TOP)/include/
-	$(CP) -f $(MYSQLCONN_DIR)/include/jdbc/cppconn/*.h $(TOP)/include/cppconn/
-
-install: installheaders
+install:
 ifeq ($(findstring win32,$(EPICS_HOST_ARCH)),)
 	$(CMAKE) ../mysql-connector-c++ -G "$(CMAKE_GENERATOR)" -A "$(PLATFORM)" -DCMAKE_INSTALL_PREFIX:PATH="$(MYSQLCONN_DIR)" $(CMAKE_CONFIG_FLAGS)
 	$(CMAKE) --build . --target install --config $(CMAKE_CONFIG) $(CMAKE_BUILD_FLAGS)
@@ -104,4 +97,8 @@ else
 	if test -d $(MYSQLCONN_DIR)/lib64; then find $(MYSQLCONN_DIR)/lib64 \( -type f -o -type l \) -exec $(CP) {} $(TOP)/lib/$(EPICS_HOST_ARCH)/ \; ; fi
 endif
 endif
+	-$(MKDIR) $(TOP)/include
+	-$(MKDIR) $(TOP)/include/cppconn
+	$(CP) -f $(MYSQLCONN_DIR)/include/jdbc/*.h $(TOP)/include/
+	$(CP) -f $(MYSQLCONN_DIR)/include/jdbc/cppconn/*.h $(TOP)/include/cppconn/
 endif
