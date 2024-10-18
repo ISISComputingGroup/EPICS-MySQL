@@ -46,7 +46,18 @@ CMAKE_CONFIG=RelWithDebInfo
 INSTSUBDIR=
 endif
 ifneq ($(findstring static,$(EPICS_HOST_ARCH)),)
-CMAKE_CONFIG_FLAGS += -DBUILD_STATIC:BOOL=ON -DSTATIC_MSVCRT:BOOL=ON -DMYSQLCLIENT_STATIC_LINKING:BOOL=ON
+# we need to set MYSQLCLIENT_STATIC_LINKING to OFF so we link to DLL, this is because static
+# mysql client library is compiled with /MD not /MT. This means our static executable depends on libmysql.dll
+CMAKE_CONFIG_FLAGS += -DBUILD_STATIC:BOOL=ON -DSTATIC_MSVCRT:BOOL=ON -DMYSQLCLIENT_STATIC_LINKING:BOOL=OFF
+MYSQLLIBSFX=-static-mt
+BIN_INSTALLS_WIN32 += $(MYSQL_INSTALL_DIR)/bin/libssl*.dll
+BIN_INSTALLS_WIN32 += $(MYSQL_INSTALL_DIR)/bin/libcrypto*.dll
+else
+# mysql ships a static and DLL both compiled with /MD however as we may have compiled
+# with /MDd for safety we'll force a DLL load by turning off MYSQLCLIENT_STATIC_LINKING
+CMAKE_CONFIG_FLAGS += -DMYSQLCLIENT_STATIC_LINKING:BOOL=OFF
+# use ibex SSL libraries that should be compatible with mysql 
+BIN_INSTALLS_WIN32 += $(OPENSSL)/bin/$(EPICS_HOST_ARCH)/*.dll
 endif
 
 ifneq ($(findstring win32,$(EPICS_HOST_ARCH)),)
@@ -56,8 +67,8 @@ BIN_INSTALLS_WIN32 += $(MYSQLCONN_DIR)/lib/*.dll
 LIB_INSTALLS_WIN32 += $(MYSQLCONN_DIR)/lib/vs14/mysqlcppconn*.lib
 else
 MYSQLCONN_DIR=$(MYSQL)/install/$(EPICS_HOST_ARCH)
+# copy in libmysql.dll for MYSQLCLIENT_STATIC_LINKING:BOOL=OFF
 BIN_INSTALLS_WIN32 += $(MYSQL_INSTALL_DIR)/lib/libmysql.dll
-BIN_INSTALLS_WIN32 += $(OPENSSL)/bin/$(EPICS_HOST_ARCH)/*.dll
 endif
 
 include $(TOP)/configure/RULES
@@ -84,7 +95,8 @@ ifeq ($(findstring win32,$(EPICS_HOST_ARCH)),)
 ifeq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 # dlls and pdbs need to be in bin not lib (and leaving copy in lib causes link errors)
 	$(CP) -f $(MYSQLCONN_DIR)/lib64/$(INSTSUBDIR)/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
-	$(CP) -f $(MYSQLCONN_DIR)/lib64/vs14/$(INSTSUBDIR)/* $(TOP)/lib/$(EPICS_HOST_ARCH)/
+	$(CP) -f $(MYSQLCONN_DIR)/lib64/vs14/$(INSTSUBDIR)/mysqlcppconn$(MYSQLLIBSFX).lib $(TOP)/lib/$(EPICS_HOST_ARCH)/mysqlcppconn.lib
+	$(CP) -f $(MYSQLCONN_DIR)/lib64/vs14/$(INSTSUBDIR)/mysqlcppconn8$(MYSQLLIBSFX).lib $(TOP)/lib/$(EPICS_HOST_ARCH)/mysqlcppconn8.lib
 	$(CP) -f $(MYSQLCONN_DIR)/lib64/$(INSTSUBDIR)/*.dll $(TOP)/bin/$(EPICS_HOST_ARCH)/
 	$(CP) -f $(MYSQLCONN_DIR)/lib64/$(INSTSUBDIR)/*.pdb $(TOP)/bin/$(EPICS_HOST_ARCH)/
 else
