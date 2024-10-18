@@ -1,5 +1,5 @@
 [submodule "MySQLCPPApp/src/mysql-connector-c++"]
 	path = MySQLCPPApp/src/mysql-connector-c++
-	url = https://github.com/ISISComputingGroup/mysql-connector-cpp
+	url = https://github.com/ISISComputingGroup/mysql-connector-cpp.git
 	branch = 8.4.x-ibex
 
