@@ -24,9 +24,6 @@ endif
 
 CMAKE_CONFIG_FLAGS=-DWITH_SSL=$(OPENSSL)/install/$(EPICS_HOST_ARCH) -DWITH_JDBC=ON -DWITH_MYSQL=$(MYSQL_INSTALL_DIR) 
 
-# this would use zlib bundled in ibex, we may nede this for static linking as mysql bindles a zlib and
-# when not buildign a DLL we may get a conflict 
-#-DZLIB_LIBRARY=zlib.lib -DZLIB_INCLUDE_DIR=$(ZLIB)/include -DZLIB_LIB_DIR=$(ZLIB)/lib/$(EPICS_HOST_ARCH)
 
 CMAKE_BUILD_FLAGS=
 ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
@@ -53,6 +50,9 @@ ifneq ($(findstring static,$(EPICS_HOST_ARCH)),)
 # we need to set MYSQLCLIENT_STATIC_LINKING to OFF so we link to DLL, this is because static
 # mysql client library is compiled with /MD not /MT. This means our static executable depends on libmysql.dll
 CMAKE_CONFIG_FLAGS += -DBUILD_STATIC:BOOL=ON -DSTATIC_MSVCRT:BOOL=ON -DMYSQLCLIENT_STATIC_LINKING:BOOL=OFF
+# use zlib bundled in ibex, primarily needed for static linking as mysql bundles a zlib and we'd get a conflict
+# DLL builds work without this
+CMAKE_CONFIG_FLAGS += -DZLIB_LIBRARY=zlib.lib -DZLIB_INCLUDE_DIR=$(ZLIB)/include -DZLIB_LIB_DIR=$(ZLIB)/lib/$(EPICS_HOST_ARCH)
 MYSQLLIBSFX=-static-mt
 BIN_INSTALLS_WIN32 += $(MYSQL_INSTALL_DIR)/bin/libssl*.dll
 BIN_INSTALLS_WIN32 += $(MYSQL_INSTALL_DIR)/bin/libcrypto*.dll
