@@ -54,21 +54,21 @@ CMAKE_CONFIG_FLAGS += -DBUILD_STATIC:BOOL=ON -DSTATIC_MSVCRT:BOOL=ON -DMYSQLCLIE
 # DLL builds work without this
 CMAKE_CONFIG_FLAGS += -DZLIB_LIBRARY=zlib.lib -DZLIB_INCLUDE_DIR=$(ZLIB)/include -DZLIB_LIB_DIR=$(ZLIB)/lib/$(EPICS_HOST_ARCH)
 MYSQLLIBSFX=-static-mt
-BIN_INSTALLS_WIN32 += $(MYSQL_INSTALL_DIR)/bin/libssl*.dll
-BIN_INSTALLS_WIN32 += $(MYSQL_INSTALL_DIR)/bin/libcrypto*.dll
+BIN_INSTALLS_WIN32 += $(wildcard $(MYSQL_INSTALL_DIR)/bin/libssl*.dll)
+BIN_INSTALLS_WIN32 += $(wildcard $(MYSQL_INSTALL_DIR)/bin/libcrypto*.dll)
 else
 # mysql ships a static and DLL both compiled with /MD however as we may have compiled
 # with /MDd for safety we'll force a DLL load by turning off MYSQLCLIENT_STATIC_LINKING
 CMAKE_CONFIG_FLAGS += -DMYSQLCLIENT_STATIC_LINKING:BOOL=OFF
 # use ibex SSL libraries that should be compatible with mysql 
-BIN_INSTALLS_WIN32 += $(OPENSSL)/bin/$(EPICS_HOST_ARCH)/*.dll
+BIN_INSTALLS_WIN32 += $(wildcard $(OPENSSL)/bin/$(EPICS_HOST_ARCH)/*.dll)
 endif
 
 ifneq ($(findstring win32,$(EPICS_HOST_ARCH)),)
 MYSQLCONN_DIR = $(EPICS_ROOT)/ICP_Binaries/mysql/mysql-connector-c++-8.0.33-win32
-BIN_INSTALLS_WIN32 += $(MYSQLCONN_DIR)/bin/*.dll
-BIN_INSTALLS_WIN32 += $(MYSQLCONN_DIR)/lib/*.dll
-LIB_INSTALLS_WIN32 += $(MYSQLCONN_DIR)/lib/vs14/mysqlcppconn*.lib
+BIN_INSTALLS_WIN32 += $(wildcard $(MYSQLCONN_DIR)/bin/*.dll)
+BIN_INSTALLS_WIN32 += $(wildcard $(MYSQLCONN_DIR)/lib/*.dll)
+LIB_INSTALLS_WIN32 += $(wildcard $(MYSQLCONN_DIR)/lib/vs14/mysqlcppconn*.lib)
 else
 MYSQLCONN_DIR=$(MYSQL)/install/$(EPICS_HOST_ARCH)
 # copy in libmysql.dll for MYSQLCLIENT_STATIC_LINKING:BOOL=OFF
