@@ -28,6 +28,7 @@ CMAKE_CONFIG_FLAGS=-DWITH_SSL=$(OPENSSL)/install/$(EPICS_HOST_ARCH) -DWITH_JDBC=
 CMAKE_BUILD_FLAGS=
 ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
 CMAKE_GENERATOR=Unix Makefiles
+CMAKE_CONFIG_FLAGS += -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
 else
 ifneq ($(findstring windows,$(EPICS_HOST_ARCH)),)
 VS_ARCH=$(VS_MAJOR)
