@@ -52,8 +52,13 @@ ifneq ($(findstring static,$(EPICS_HOST_ARCH)),)
 CMAKE_CONFIG_FLAGS += -DBUILD_STATIC:BOOL=ON -DSTATIC_MSVCRT:BOOL=ON -DMYSQLCLIENT_STATIC_LINKING:BOOL=OFF
 # use zlib bundled in ibex, primarily needed for static linking as mysql bundles a zlib and we'd get a conflict
 # DLL builds work without this
-CMAKE_CONFIG_FLAGS += -DZLIB_LIBRARY=zlib.lib -DZLIB_INCLUDE_DIR=$(ZLIB)/include -DZLIB_LIB_DIR=$(ZLIB)/lib/$(EPICS_HOST_ARCH)
+ifneq ($(findstring linux,$(EPICS_HOST_ARCH)),)
+CMAKE_CONFIG_FLAGS += -DZLIB_LIBRARY=libzlib.a
+else
+CMAKE_CONFIG_FLAGS += -DZLIB_LIBRARY=zlib.lib
 MYSQLLIBSFX=-static-mt
+endif
+CMAKE_CONFIG_FLAGS += -DZLIB_INCLUDE_DIR=$(ZLIB)/include -DZLIB_LIB_DIR=$(ZLIB)/lib/$(EPICS_HOST_ARCH)
 BIN_INSTALLS_WIN32 += $(wildcard $(MYSQL_INSTALL_DIR)/bin/libssl*.dll)
 BIN_INSTALLS_WIN32 += $(wildcard $(MYSQL_INSTALL_DIR)/bin/libcrypto*.dll)
 else
